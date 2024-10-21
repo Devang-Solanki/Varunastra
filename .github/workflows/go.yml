@@ -26,19 +26,19 @@ jobs:
         run: |
           if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
             if [[ "${{ matrix.arch }}" == "amd64" ]]; then
-              GOOS=linux GOARCH=amd64 go build -o myapp .
-              zip varunastra_linux_amd64.zip myapp
+              GOOS=linux GOARCH=amd64 go build -o varunastra .
+              zip varunastra_linux_amd64.zip varunastra
             elif [[ "${{ matrix.arch }}" == "arm64" ]]; then
-              GOOS=linux GOARCH=arm64 go build -o myapp .
-              zip varunastra_linux_arm64.zip myapp
+              GOOS=linux GOARCH=arm64 go build -o varunastra .
+              zip varunastra_linux_arm64.zip varunastra
             fi
           elif [[ "${{ matrix.os }}" == "macos-latest" ]]; then
             if [[ "${{ matrix.arch }}" == "amd64" ]]; then
-              GOOS=darwin GOARCH=amd64 go build -o myapp .
-              zip varunastra_darwin_amd64.zip myapp
+              GOOS=darwin GOARCH=amd64 go build -o varunastra .
+              zip varunastra_darwin_amd64.zip varunastra
             elif [[ "${{ matrix.arch }}" == "arm64" ]]; then
-              GOOS=darwin GOARCH=arm64 go build -o myapp .
-              zip varunastra_darwin_arm64.zip myapp
+              GOOS=darwin GOARCH=arm64 go build -o varunastra .
+              zip varunastra_darwin_arm64.zip varunastra
             fi
           fi
 
