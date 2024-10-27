@@ -1,4 +1,4 @@
-package main
+package docker
 
 import (
 	"archive/tar"
@@ -9,28 +9,53 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/Devang-Solanki/Varunastra/config"
+	"github.com/Devang-Solanki/Varunastra/deps"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
+	"github.com/google/go-containerregistry/pkg/v1/tarball"
+)
+
+var (
+	output FinalOutput
+	scans  config.ScanMap
 )
 
 // processImage processes a single Docker image
-func processImage(imageName string) error {
+func ProcessImage(imageName string, scanMap map[string]bool, regexDB []config.RegexDB, excludedPatterns config.ExcludedPatterns) (FinalOutput, error) {
+	scans = scanMap
+	output.Target = imageName
+
+	var workerwg sync.WaitGroup
+	for i := 0; i < workerCount; i++ {
+		workerwg.Add(1)
+		go worker(&workerwg, &output, scans, regexDB)
+	}
 
 	log.Println("Starting Scan for Image:", imageName)
 
 	var img v1.Image
 	var err error
 
-	ref, err := name.ParseReference(imageName)
-	if err != nil {
-		return fmt.Errorf("failed to parse image reference %s: %w", imageName, err)
-	}
+	isLocalFile := strings.HasSuffix(imageName, ".tar")
 
-	// Try to get the remote image
-	img, err = remote.Image(ref)
-	if err != nil {
-		return fmt.Errorf("failed to retrieve remote image %s: %w", imageName, err)
+	if isLocalFile {
+		img, err = tarball.ImageFromPath(imageName, nil)
+		if err != nil {
+			return FinalOutput{}, fmt.Errorf("failed to load local image %s: %v", imageName, err)
+		}
+	} else {
+		ref, err := name.ParseReference(imageName)
+		if err != nil {
+			return FinalOutput{}, fmt.Errorf("failed to parse image reference %s: %v", imageName, err)
+
+		}
+		// Try to get the remote image
+		img, err = remote.Image(ref)
+		if err != nil {
+			return FinalOutput{}, fmt.Errorf("failed to retrieve remote image %s: %w", imageName, err)
+		}
 	}
 
 	// Create a WaitGroup to wait for goroutines to complete
@@ -43,7 +68,7 @@ func processImage(imageName string) error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		if err := processLayers(img, imageName); err != nil {
+		if err := processLayers(img, imageName, excludedPatterns); err != nil {
 			errorCh <- fmt.Errorf("error processing layers: %w", err)
 			return
 		}
@@ -67,10 +92,12 @@ func processImage(imageName string) error {
 
 	// Check for any errors from goroutines
 	for err := range errorCh {
-		return err
+		return FinalOutput{}, err
 	}
 
-	return nil
+	close(taskChannel)
+	workerwg.Wait()
+	return output, nil
 }
 
 // Function to determine if a layer is compressed or uncompressed and to get the appropriate hash or diff ID
@@ -106,7 +133,7 @@ func isCompressedLayer(layer v1.Layer) (bool, error) {
 }
 
 // processLayers processes the layers of a Docker image
-func processLayers(img v1.Image, imageName string) error {
+func processLayers(img v1.Image, imageName string, excludedPatterns config.ExcludedPatterns) error {
 	var wg sync.WaitGroup
 	sem := make(chan struct{}, maxGoroutines) // Semaphore channel
 
@@ -128,7 +155,7 @@ func processLayers(img v1.Image, imageName string) error {
 			defer wg.Done()          // Decrement the counter when the goroutine completes
 			defer func() { <-sem }() // Release the token
 
-			if err := processLayer(layer, key, imageName); err != nil {
+			if err := processLayer(layer, key, imageName, excludedPatterns); err != nil {
 				log.Printf("error processing layer: %s", err)
 			}
 		}(layer, key, imageName)
@@ -139,7 +166,7 @@ func processLayers(img v1.Image, imageName string) error {
 }
 
 // processLayer reads and processes the content of a single image layer
-func processLayer(layer v1.Layer, digest v1.Hash, imageName string) error {
+func processLayer(layer v1.Layer, digest v1.Hash, imageName string, excludedPatterns config.ExcludedPatterns) error {
 	log.Println("Scanning Layers:", digest.String())
 
 	// fileSemaphore := make(chan struct{}, 10)
@@ -150,7 +177,7 @@ func processLayer(layer v1.Layer, digest v1.Hash, imageName string) error {
 	}
 	defer r.Close()
 
-	gitSkip := false
+	// gitSkip := false
 
 	tr := tar.NewReader(r)
 	for {
@@ -162,7 +189,7 @@ func processLayer(layer v1.Layer, digest v1.Hash, imageName string) error {
 			return fmt.Errorf("error reading tar archive: %w", err)
 		}
 
-		if header.Typeflag != tar.TypeReg || isExcluded(header.Name) {
+		if header.Typeflag != tar.TypeReg || isExcluded(header.Name, excludedPatterns) {
 			continue
 		}
 
@@ -171,15 +198,15 @@ func processLayer(layer v1.Layer, digest v1.Hash, imageName string) error {
 			continue
 		}
 
-		if strings.Contains(header.Name, ".git/") && gitSkip {
-			continue
-		}
+		// if strings.Contains(header.Name, ".git/") && gitSkip {
+		// 	continue
+		// }
 
-		if strings.Contains(header.Name, ".git/HEAD") && scanMap["vuln"] {
-			gitSkip = true
-			handleGitRepo(header.Name)
-			continue
-		}
+		// if strings.Contains(header.Name, ".git/HEAD") && scanMap["vuln"] {
+		// 	gitSkip = true
+		// 	handleGitRepo(header.Name)
+		// 	continue
+		// }
 
 		err = processFileContent(tr, header, digest, imageName)
 		if err != nil {
@@ -192,6 +219,20 @@ func processLayer(layer v1.Layer, digest v1.Hash, imageName string) error {
 }
 
 func processFileContent(tr *tar.Reader, header *tar.Header, digest v1.Hash, imageName string) error {
+
+	// Scan the file content for secrets
+	// Check if it's a known dependency file
+	if scans["vuln"] {
+		vulnData, err := deps.HandleDependencyFile(header.Name, tr)
+		if strings.Contains(err, "dependency not supported yet") {
+			log.Println(err)
+		} else {
+			return err
+		}
+
+		output.Vulnerability = append(output.Vulnerability, vulnData...)
+	}
+
 	if header.Size > maxFileSize {
 		// Handle large files by writing to a temp file
 		return processLargeFile(tr, header.Name, digest, imageName)
