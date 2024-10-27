@@ -19,10 +19,6 @@ var (
 // handleDependencyFile processes and checks a specific dependency file
 func HandleDependencyFile(fileName string, tr *tar.Reader) ([]VulnIssue, error) {
 
-	if isKnownDependencyFile(fileName) {
-		return nil, fmt.Errorf("dependency not supported yet")
-	}
-
 	var buf bytes.Buffer
 	if _, err := io.Copy(&buf, tr); err != nil {
 		return nil, fmt.Errorf("failed to read file %s: %v", fileName, err)

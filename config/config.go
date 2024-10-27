@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	"gopkg.in/yaml.v2"
 )
@@ -36,6 +37,32 @@ func initRegex(configFilePath string) ([]RegexDB, error) {
 
 	regexStore := dbs
 	return regexStore, nil
+}
+
+// CreateScanMap generates a ScanMap based on the provided scans from CLI.
+func CreateScanMap(cliScans string) ScanMap {
+	defaultScans := []string{"secrets", "vuln", "assets"}
+	scanMap := make(ScanMap)
+
+	// Set all default scans to true initially
+	for _, scan := range defaultScans {
+		scanMap[scan] = true
+	}
+
+	// If specified scans are given, set those to false
+	if cliScans != "" {
+		scanList := strings.Split(cliScans, ",")
+		for _, scan := range defaultScans {
+			scanMap[scan] = false // Default to false for default scans
+		}
+		for _, scan := range scanList {
+			if _, exists := scanMap[scan]; exists {
+				scanMap[scan] = true
+			}
+		}
+	}
+
+	return scanMap
 }
 
 func LoadConfig() ([]RegexDB, ExcludedPatterns, error) {

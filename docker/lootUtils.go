@@ -222,12 +222,10 @@ func processFileContent(tr *tar.Reader, header *tar.Header, digest v1.Hash, imag
 
 	// Scan the file content for secrets
 	// Check if it's a known dependency file
-	if scans["vuln"] {
+	if scans["vuln"] && deps.IsKnownDependencyFile(header.Name) {
 		vulnData, err := deps.HandleDependencyFile(header.Name, tr)
-		if strings.Contains(err, "dependency not supported yet") {
+		if !strings.Contains(err.Error(), "dependency not supported yet") {
 			log.Println(err)
-		} else {
-			return err
 		}
 
 		output.Vulnerability = append(output.Vulnerability, vulnData...)

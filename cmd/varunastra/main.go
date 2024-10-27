@@ -15,27 +15,11 @@ import (
 
 // handleScan processes the scan command.
 func handleScan(cli config.CLI, regexDB []config.RegexDB, excludedPatterns config.ExcludedPatterns) {
-	var scanMap config.ScanMap
-	// Process scans
-	defaultScans := []string{"secrets", "vuln", "assets"}
-
-	if cli.Scans == "" {
-		for _, scan := range defaultScans {
-			scanMap[scan] = true
-		}
-	} else {
-		scanList := strings.Split(cli.Scans, ",")
-		for _, scan := range defaultScans {
-			scanMap[scan] = false // Default to false
-		}
-		for _, scan := range scanList {
-			scanMap[scan] = true // Set specified scans to true
-		}
-	}
-
 	if len(os.Args) < 2 {
 		log.Fatalf("Usage: %s <docker-image>", os.Args[0])
 	}
+
+	scanMap := config.CreateScanMap(cli.Scans)
 
 	imageName := cli.Target
 
