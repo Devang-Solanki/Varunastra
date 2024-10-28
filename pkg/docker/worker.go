@@ -5,7 +5,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Devang-Solanki/Varunastra/config"
+	"github.com/Devang-Solanki/Varunastra/pkg/config"
 )
 
 func worker(wg *sync.WaitGroup, output *FinalOutput, scanMap config.ScanMap, regexDB []config.RegexDB) {

@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Devang-Solanki/Varunastra/config"
+	"github.com/Devang-Solanki/Varunastra/pkg/config"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 )
 

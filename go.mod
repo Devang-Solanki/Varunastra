@@ -1,4 +1,4 @@
-module github.com/Devang-Solanki/Varunastra
+module github.com/Devang-Solanki/Varunastra/pkg
 
 go 1.21.1
 

@@ -9,8 +9,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Devang-Solanki/Varunastra/config"
-	"github.com/Devang-Solanki/Varunastra/deps"
+	"github.com/Devang-Solanki/Varunastra/pkg/config"
+	"github.com/Devang-Solanki/Varunastra/pkg/deps"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"

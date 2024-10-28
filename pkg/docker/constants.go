@@ -1,6 +1,6 @@
 package docker
 
-import "github.com/Devang-Solanki/Varunastra/deps"
+import "github.com/Devang-Solanki/Varunastra/pkg/deps"
 
 // Constants for configuration and limits
 const (

@@ -7,8 +7,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Devang-Solanki/Varunastra/config"
-	"github.com/Devang-Solanki/Varunastra/docker"
+	"github.com/Devang-Solanki/Varunastra/pkg/config"
+	"github.com/Devang-Solanki/Varunastra/pkg/docker"
 
 	"github.com/alecthomas/kong"
 )
