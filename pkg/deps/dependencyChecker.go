@@ -13,13 +13,13 @@ import (
 // checkNPMDependencyVulnerabilities checks for known vulnerabilities in an NPM dependency
 func checkDependencyVulnerabilities(dep Dependency, filename string, env string) error {
 	// Clean the version string
-	cleanedVersion := cleanVersion(dep.Version)
+	cleanedVersion := cleanVersion(dep)
 
 	// Encode the package name for the API request
 	encodedName := url.PathEscape(dep.Name)
 
 	// Construct the API URL
-	apiURL := fmt.Sprintf("https://api.deps.dev/v3/systems/%s/packages/%s/versions/%s", env, encodedName, cleanedVersion)
+	apiURL := fmt.Sprintf("https://api.deps.dev/v3/systems/%s/packages/%s/versions/%s", env, encodedName, cleanedVersion.Version)
 
 	// Perform the HTTP GET request
 	resp, err := http.Get(apiURL)
@@ -31,7 +31,6 @@ func checkDependencyVulnerabilities(dep Dependency, filename string, env string)
 
 	// Check if the response status is not 200 (OK)
 	if resp.StatusCode != http.StatusOK {
-		log.Println(apiURL)
 		log.Printf("Failed to fetch vulnerabilities for %s@%s: HTTP status %d", dep.Name, dep.Version, resp.StatusCode)
 		return fmt.Errorf("HTTP status %d for %s@%s", resp.StatusCode, dep.Name, dep.Version)
 	}

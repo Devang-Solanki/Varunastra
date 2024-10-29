@@ -44,17 +44,42 @@ func ProcessImage(imageName string, scanMap map[string]bool, regexDB []config.Re
 		img, err = tarball.ImageFromPath(imageName, nil)
 		if err != nil {
 			return FinalOutput{}, fmt.Errorf("failed to load local image %s: %v", imageName, err)
+
 		}
 	} else {
 		ref, err := name.ParseReference(imageName)
 		if err != nil {
 			return FinalOutput{}, fmt.Errorf("failed to parse image reference %s: %v", imageName, err)
-
 		}
+
 		// Try to get the remote image
 		img, err = remote.Image(ref)
 		if err != nil {
-			return FinalOutput{}, fmt.Errorf("failed to retrieve remote image %s: %w", imageName, err)
+			log.Printf("Failed to retrieve remote image %s: %v", imageName, err)
+			// Try fetching available tags if latest doesn't work
+			if strings.HasSuffix(imageName, ":latest") || !strings.Contains(imageName, ":") {
+				tags, err := fetchTagsFromDockerHub(imageName)
+				if err != nil {
+					return FinalOutput{}, fmt.Errorf("failed to fetch tags for image %s: %v", imageName, err)
+				}
+				if len(tags) > 0 {
+					// Retry with the first available tag
+					log.Printf("Retrying with the first available tag: %s", tags[0])
+					imageName = strings.Split(imageName, ":")[0] + ":" + tags[0]
+					ref, err = name.ParseReference(imageName)
+					if err != nil {
+						return FinalOutput{}, fmt.Errorf("failed to parse image reference %s: %v", imageName, err)
+					}
+					img, err = remote.Image(ref)
+					if err != nil {
+						return FinalOutput{}, fmt.Errorf("failed to retrieve remote image %s: %v", imageName, err)
+					}
+				} else {
+					return FinalOutput{}, fmt.Errorf("no available tags found for image %s", imageName)
+				}
+			} else {
+				return FinalOutput{}, fmt.Errorf("something went wrong for image %s", imageName)
+			}
 		}
 	}
 
@@ -224,7 +249,7 @@ func processFileContent(tr *tar.Reader, header *tar.Header, digest v1.Hash, imag
 	// Check if it's a known dependency file
 	if scans["vuln"] && deps.IsKnownDependencyFile(header.Name) {
 		vulnData, err := deps.HandleDependencyFile(header.Name, tr)
-		if err != nil && !strings.Contains(err.Error(), "unsupported dependency file type") {
+		if err != nil && !(strings.Contains(err.Error(), "unsupported dependency file type") || strings.Contains(err.Error(), "we have seen")) {
 			log.Println(err)
 		}
 

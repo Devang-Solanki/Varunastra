@@ -22,17 +22,29 @@ func IsKnownDependencyFile(fileName string) bool {
 }
 
 // cleanVersion cleans the version string to remove any non-numeric, non-dot characters
-func cleanVersion(version string) string {
+func cleanVersion(deb Dependency) Dependency {
+
+	if strings.Contains(deb.Version, "npm:") {
+		// Extract the version after the '@' symbol
+		versionParts := strings.Split(deb.Version, "@")
+		if len(versionParts) == 2 {
+			deb.Version = versionParts[1] // Get the version part
+			// Clean the name by removing the 'npm:' prefix
+			deb.Name = strings.TrimPrefix(versionParts[0], "npm:")
+		}
+	}
+
 	// Define a regex to match valid version components (digits and dots)
 	re := regexp.MustCompile(`^[~^<>=\s]*(\d+\.\d+\.\d+.*)`)
-	matches := re.FindStringSubmatch(version)
+	matches := re.FindStringSubmatch(deb.Version)
 
 	if len(matches) > 1 {
 		// Return the first capture group, which is the cleaned version
-		return matches[1]
+		deb.Version = matches[1]
+		return deb
 	}
 	// If no matches are found, return the original version as a fallback
-	return version
+	return deb
 }
 
 // getAdvisoryDetails fetches detailed information about a security advisory
