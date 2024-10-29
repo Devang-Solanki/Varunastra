@@ -29,7 +29,7 @@ jobs:
         with:
           tag_name: ${{ github.event.release.tag_name }}  
           files: |
-            ${{github.workspace}}/varunastra_linux_amd64.zip
+            ${{github.workspace}}/cmd/varunastra/varunastra_linux_amd64.zip
 
   build-linux-arm64:
     runs-on: ubuntu-latest
@@ -55,7 +55,7 @@ jobs:
         with:
           tag_name: ${{ github.event.release.tag_name }}  
           files: |
-            ${{github.workspace}}/varunastra_linux_arm64.zip
+            ${{github.workspace}}/cmd/varunastra/varunastra_linux_arm64.zip
 
   build-macos-arm64:
     runs-on: macos-latest
@@ -81,4 +81,4 @@ jobs:
         with:
           tag_name: ${{ github.event.release.tag_name }}  
           files: |
-            ${{github.workspace}}/varunastra_darwin_arm64.zip
+            ${{github.workspace}}/cmd/varunastra/varunastra_darwin_arm64.zip
