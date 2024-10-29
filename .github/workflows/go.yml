@@ -48,14 +48,21 @@ jobs:
             fi
           fi
 
+  upload:
+    runs-on: ubuntu-latest  # Can be any OS; it will only upload if builds succeed
+    needs: build  # Ensure this job runs only after the build jobs are complete
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
       - name: Upload binaries to release
         uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag: ${{ github.event.release.tag_name }}  
+          tag_name: ${{ github.event.release.tag_name }}  
           files: |
-            ${{github.workspace}}/cmd/varunastra/varunastra_linux_amd64.zip
-            ${{github.workspace}}/cmd/varunastra/varunastra_linux_arm64.zip
-            ${{github.workspace}}/cmd/varunastra/varunastra_darwin_amd64.zip
-            ${{github.workspace}}/cmd/varunastra/varunastra_darwin_arm64.zip
+            cmd/varunastra/varunastra_linux_amd64.zip
+            cmd/varunastra/varunastra_linux_arm64.zip
+            cmd/varunastra/varunastra_darwin_amd64.zip
+            cmd/varunastra/varunastra_darwin_arm64.zip
