@@ -62,7 +62,7 @@ jobs:
         with:
           tag_name: ${{ github.event.release.tag_name }}  
           files: |
-            cmd/varunastra/varunastra_linux_amd64.zip
-            cmd/varunastra/varunastra_linux_arm64.zip
-            cmd/varunastra/varunastra_darwin_amd64.zip
-            cmd/varunastra/varunastra_darwin_arm64.zip
+            ${{github.workspace}}/cmd/varunastra/varunastra_linux_amd64.zip
+            ${{github.workspace}}/cmd/varunastra/varunastra_linux_arm64.zip
+            ${{github.workspace}}/cmd/varunastra/varunastra_darwin_amd64.zip
+            ${{github.workspace}}/cmd/varunastra/varunastra_darwin_arm64.zip
