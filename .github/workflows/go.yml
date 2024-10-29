@@ -24,6 +24,7 @@ jobs:
 
       - name: Build binaries
         run: |
+          cd cmd/varunastra  # Navigate to the correct directory
           if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
             if [[ "${{ matrix.arch }}" == "amd64" ]]; then
               GOOS=linux GOARCH=amd64 go build -o varunastra .

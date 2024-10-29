@@ -11,8 +11,7 @@ import (
 )
 
 // checkNPMDependencyVulnerabilities checks for known vulnerabilities in an NPM dependency
-func checkDependencyVulnerabilities(dep Dependency, filename string, env string) {
-
+func checkDependencyVulnerabilities(dep Dependency, filename string, env string) error {
 	// Clean the version string
 	cleanedVersion := cleanVersion(dep.Version)
 
@@ -21,11 +20,12 @@ func checkDependencyVulnerabilities(dep Dependency, filename string, env string)
 
 	// Construct the API URL
 	apiURL := fmt.Sprintf("https://api.deps.dev/v3/systems/%s/packages/%s/versions/%s", env, encodedName, cleanedVersion)
+
 	// Perform the HTTP GET request
 	resp, err := http.Get(apiURL)
 	if err != nil {
 		log.Printf("Failed to fetch vulnerabilities for %s@%s: %v", dep.Name, dep.Version, err)
-		return
+		return err
 	}
 	defer resp.Body.Close()
 
@@ -33,12 +33,18 @@ func checkDependencyVulnerabilities(dep Dependency, filename string, env string)
 	if resp.StatusCode != http.StatusOK {
 		log.Println(apiURL)
 		log.Printf("Failed to fetch vulnerabilities for %s@%s: HTTP status %d", dep.Name, dep.Version, resp.StatusCode)
-		return
+		return fmt.Errorf("HTTP status %d for %s@%s", resp.StatusCode, dep.Name, dep.Version)
+	}
+
+	var response struct {
+		AdvisoryKeys []struct {
+			ID string `json:"id"`
+		} `json:"advisories"`
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
 		log.Printf("Failed to parse vulnerabilities for %s@%s: %v", dep.Name, dep.Version, err)
-		return
+		return err
 	}
 
 	// Log the found vulnerabilities
@@ -46,23 +52,26 @@ func checkDependencyVulnerabilities(dep Dependency, filename string, env string)
 		for _, advisory := range response.AdvisoryKeys {
 			// Fetch and log detailed information about each advisory
 			details, err := getAdvisoryDetails(advisory.ID)
-			if err == nil {
-				addDepenDencyIssueDetails(details, filename, dep, "NPM")
+			if err != nil {
+				log.Printf("Failed to fetch details for advisory %s: %v", advisory.ID, err)
+				continue
 			}
+			addDepenDencyIssueDetails(details, filename, dep, "NPM")
 		}
 	}
+
+	return nil
 }
 
 // checkNPMDependencyConfusion checks for potential dependency confusion for an NPM dependency
-func checkNPMDependencyConfusion(dep Dependency) {
-
+func checkNPMDependencyConfusion(dep Dependency) error {
 	// Query the public NPM registry to get information about the package
 	apiURL := fmt.Sprintf("https://registry.npmjs.org/%s", url.PathEscape(dep.Name))
 
 	resp, err := http.Get(apiURL)
 	if err != nil {
 		log.Printf("Failed to fetch package info for %s: %v", dep.Name, err)
-		return
+		return err
 	}
 	defer resp.Body.Close()
 
@@ -70,23 +79,27 @@ func checkNPMDependencyConfusion(dep Dependency) {
 	if resp.StatusCode == http.StatusNotFound {
 		log.Printf("Package %s does not exist on the public NPM registry.", dep.Name)
 		addDepenDencyIssueDetails(dep.Name, apiURL, dep, "NPM")
-		return
+		return nil
 	}
+
+	return nil
 }
 
 // checkGemDependencyVulnerabilities checks for known vulnerabilities in a Gem dependency.
-func checkGemDependencyVulnerabilities(dep rubyaudit.Dependency, filename string) {
+func checkGemDependencyVulnerabilities(dep rubyaudit.Dependency, filename string) error {
 	result, err := rubyaudit.SearchAdvisories(dep.Name, dep.Version)
 	if err != nil {
-		log.Println("error searching advisories: %v, %s:%s", err, dep.Name, dep.Version)
+		log.Printf("Error searching advisories: %v, %s:%s", err, dep.Name, dep.Version)
+		return err
 	}
 
 	addDepenDencyIssueDetails(result, filename, dep, "GEM")
-
+	return nil
 }
 
 // checkGemDependencyConfusion checks for potential dependency confusion for a Gem dependency.
-func checkGemDependencyConfusion(dep Dependency) {
+func checkGemDependencyConfusion(dep Dependency) error {
 	log.Printf("Checking dependency confusion for Gem dependency: %s@%s", dep.Name, dep.Version)
 	// Implement logic to check for dependency confusion, e.g., checking if the dependency exists in a public registry.
+	return nil
 }

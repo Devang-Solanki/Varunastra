@@ -224,11 +224,13 @@ func processFileContent(tr *tar.Reader, header *tar.Header, digest v1.Hash, imag
 	// Check if it's a known dependency file
 	if scans["vuln"] && deps.IsKnownDependencyFile(header.Name) {
 		vulnData, err := deps.HandleDependencyFile(header.Name, tr)
-		if !strings.Contains(err.Error(), "dependency not supported yet") {
+		if err != nil && !strings.Contains(err.Error(), "unsupported dependency file type") {
 			log.Println(err)
 		}
 
-		output.Vulnerability = append(output.Vulnerability, vulnData...)
+		if len(vulnData) > 0 {
+			output.Vulnerability = append(output.Vulnerability, vulnData...)
+		}
 	}
 
 	if header.Size > maxFileSize {

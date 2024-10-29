@@ -16,25 +16,27 @@ var (
 	issues []VulnIssue
 )
 
-// handleDependencyFile processes and checks a specific dependency file
+// HandleDependencyFile processes and checks a specific dependency file
 func HandleDependencyFile(fileName string, tr *tar.Reader) ([]VulnIssue, error) {
-
 	var buf bytes.Buffer
 	if _, err := io.Copy(&buf, tr); err != nil {
 		return nil, fmt.Errorf("failed to read file %s: %v", fileName, err)
-
 	}
 	content := buf.Bytes()
 
 	switch {
-	case strings.HasSuffix(fileName, "package-lock.json"): // || strings.HasSuffix(fileName, "package.json"):
-		handlePackageLockJSON(fileName, &content)
+	case strings.HasSuffix(fileName, "package-lock.json"):
+		if err := handlePackageLockJSON(fileName, &content); err != nil {
+			return nil, err
+		}
 	case strings.HasSuffix(fileName, "Gemfile.lock"):
-		handleGemLockfile(fileName, &content)
+		if err := handleGemLockfile(fileName, &content); err != nil {
+			return nil, err
+		}
 	case strings.HasSuffix(fileName, "yarn.lock"):
-		handleYarnLockDependencies(fileName, &content)
-
-	// Add other cases for different file types
+		if err := handleYarnLockDependencies(fileName, &content); err != nil {
+			return nil, err
+		}
 	default:
 		return nil, fmt.Errorf("unsupported dependency file type: %s", fileName)
 	}
@@ -43,18 +45,16 @@ func HandleDependencyFile(fileName string, tr *tar.Reader) ([]VulnIssue, error) 
 }
 
 // handlePackageLockJSON processes a package-lock.json file to check for vulnerabilities and dependency confusion
-func handlePackageLockJSON(fileName string, content *[]byte) {
+func handlePackageLockJSON(fileName string, content *[]byte) error {
 	if strings.Contains(fileName, "node_modules") {
-		log.Printf("Skipping non package-lock.json file: %s", fileName)
-		return
+		return fmt.Errorf("skipping package-lock.json file in node_modules: %s", fileName)
 	}
 
 	log.Printf("Processing: %s", fileName)
 
 	var data map[string]interface{}
 	if err := json.Unmarshal(*content, &data); err != nil {
-		log.Printf("Failed to parse %s: %v", fileName, err)
-		return
+		return fmt.Errorf("failed to parse %s: %v", fileName, err)
 	}
 
 	dependencies := extractPackageLockDependencies(data)
@@ -62,16 +62,23 @@ func handlePackageLockJSON(fileName string, content *[]byte) {
 
 	// Check each dependency for vulnerabilities and dependency confusion
 	for _, dep := range dependencies {
-		checkDependencyVulnerabilities(dep, fileName, "npm")
-		checkNPMDependencyConfusion(dep)
+		err := checkDependencyVulnerabilities(dep, fileName, "npm")
+		if err != nil {
+			return err
+		}
+		err = checkNPMDependencyConfusion(dep)
+		if err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
-func handleYarnLockDependencies(fileName string, content *[]byte) {
-	// if strings.Contains(fileName, "node_modules") {
-	// 	log.Printf("Skipping non yarn.lock file: %s", fileName)
-	// 	return
-	// }
+func handleYarnLockDependencies(fileName string, content *[]byte) error {
+	if strings.Contains(fileName, "node_modules") {
+		return fmt.Errorf("skipping yarn.lock file in node_modules: %s", fileName)
+	}
 
 	log.Printf("Processing: %s", fileName)
 
@@ -80,32 +87,34 @@ func handleYarnLockDependencies(fileName string, content *[]byte) {
 
 	// Check each dependency for vulnerabilities and dependency confusion
 	for _, dep := range dependencies {
-		checkDependencyVulnerabilities(dep, fileName, "npm")
-		checkNPMDependencyConfusion(dep)
+		err := checkDependencyVulnerabilities(dep, fileName, "npm")
+		if err != nil {
+			return err
+		}
+		err = checkNPMDependencyConfusion(dep)
+		if err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
 // handleGemLockfile processes a Gemfile.lock to check for vulnerabilities and dependency confusion.
-func handleGemLockfile(fileName string, content *[]byte) {
+func handleGemLockfile(fileName string, content *[]byte) error {
 	log.Printf("Handling Gemfile.lock: %s", fileName)
 
 	dependencies := rubyaudit.ExtractGemfileLockDependenciesRaw(content)
-
 	log.Printf("Found %d dependencies in %s", len(dependencies), fileName)
 
 	// Check each dependency for vulnerabilities and dependency confusion.
 	for _, dep := range dependencies {
-		checkGemDependencyVulnerabilities(dep, fileName)
+		err := checkGemDependencyVulnerabilities(dep, fileName)
+		if err != nil {
+			return err
+		}
 		// checkGemDependencyConfusion(dep)
 	}
-}
 
-// isKnownDependencyFile checks if a file is one of the known dependency files
-func isKnownDependencyFile(fileName string) bool {
-	for _, knownFile := range KnownDependencyFiles {
-		if strings.HasSuffix(fileName, knownFile) {
-			return true
-		}
-	}
-	return false
+	return nil
 }
