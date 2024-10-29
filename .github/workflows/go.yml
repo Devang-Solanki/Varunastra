@@ -5,13 +5,8 @@ on:
     types: [published]
 
 jobs:
-  build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-        arch: [amd64, arm64]
-
+  build-linux-amd64:
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -22,45 +17,66 @@ jobs:
           go-version: '1.23'
 
       - name: Build for Linux amd64
-        if: matrix.os == 'ubuntu-latest' && matrix.arch == 'amd64'
         run: |
           cd cmd/varunastra
           GOOS=linux GOARCH=amd64 go build -o varunastra .
           zip varunastra_linux_amd64.zip varunastra
 
+  build-linux-arm64:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.23'
+
       - name: Build for Linux arm64
-        if: matrix.os == 'ubuntu-latest' && matrix.arch == 'arm64'
         run: |
           cd cmd/varunastra
           GOOS=linux GOARCH=arm64 go build -o varunastra .
           zip varunastra_linux_arm64.zip varunastra
 
+  build-macos-arm64:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.23'
+
       - name: Build for macOS arm64
-        if: matrix.os == 'macos-latest' && matrix.arch == 'arm64'
         run: |
           cd cmd/varunastra
           GOOS=darwin GOARCH=arm64 go build -o varunastra .
           zip varunastra_darwin_arm64.zip varunastra
 
-      - name: Upload binaries as artifacts
-        uses: actions/upload-artifact@v4
+  build-macos-amd64:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
         with:
-          name: varunastra-binaries-${{ github.run_id }}   
-          path: |
-            ${{github.workspace}}/cmd/varunastra/varunastra_linux_amd64.zip
-            ${{github.workspace}}/cmd/varunastra/varunastra_linux_arm64.zip
-            ${{github.workspace}}/cmd/varunastra/varunastra_darwin_amd64.zip
-            ${{github.workspace}}/cmd/varunastra/varunastra_darwin_arm64.zip
+          go-version: '1.23'
+
+      - name: Build for macOS amd64
+        run: |
+          cd cmd/varunastra
+          GOOS=darwin GOARCH=amd64 go build -o varunastra .
+          zip varunastra_darwin_amd64.zip varunastra
 
   upload:
     runs-on: ubuntu-latest
-    needs: build
+    needs: [build-linux-amd64, build-linux-arm64, build-macos-arm64, build-macos-amd64]
     steps:
-      - name: Download binaries
-        uses: actions/download-artifact@v4
-        with:
-          name: varunastra-binaries
-
       - name: Upload binaries to release
         uses: softprops/action-gh-release@v2
         env:
@@ -68,7 +84,7 @@ jobs:
         with:
           tag_name: ${{ github.event.release.tag_name }}  
           files: |
-            varunastra_linux_amd64.zip
-            varunastra_linux_arm64.zip
-            varunastra_darwin_amd64.zip
-            varunastra_darwin_arm64.zip
+            ${{github.workspace}}/varunastra_linux_amd64.zip
+            ${{github.workspace}}/varunastra_linux_arm64.zip
+            ${{github.workspace}}/varunastra_darwin_amd64.zip
+            ${{github.workspace}}/varunastra_darwin_arm64.zip
