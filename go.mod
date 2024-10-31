@@ -1,4 +1,4 @@
-module github.com/Devang-Solanki/Varunastra
+module github.com/redhuntlabs/Varunastra
 
 go 1.22.5
 
