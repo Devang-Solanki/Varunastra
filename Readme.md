@@ -1,7 +1,5 @@
 <p align="center">
-  <a href="https://cyclic.sh/">
-    <img src="https://devanghacks.in/varunastra/croped_logo.png" alt="cyclic.sh" width="200">
-  </a>
+    <img src="https://devanghacks.in/varunastra/croped_logo.png" alt="varunastra logo" width="200">
   <br>
 </p>
 <p align="center">
