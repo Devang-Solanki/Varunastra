@@ -35,7 +35,7 @@ func worker(wg *sync.WaitGroup, output *FinalOutput, scanMap config.ScanMap, reg
 	assets.MakeUniqueUrls()
 
 	output.Secrets = append(output.Secrets, secrets...)
-	output.Assets = append(output.Assets, assets)
+	output.Assets = assets
 }
 
 func queueTask(path string, content *[]byte, id interface{}, imageName string) {

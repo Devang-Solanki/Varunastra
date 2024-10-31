@@ -5,7 +5,7 @@ import "github.com/Devang-Solanki/Varunastra/pkg/deps"
 // Constants for configuration and limits
 const (
 	maxFileSize   = 100 * 1024 * 1024 // 100MB in bytes
-	workerCount   = 5
+	workerCount   = 10
 	maxGoroutines = 10
 
 	// Special path indicators
@@ -15,7 +15,7 @@ const (
 
 // Global variables
 var (
-	taskChannel = make(chan SecretScanTask, 50) // Channel for secret scan tasks
+	taskChannel = make(chan SecretScanTask, 1000) // Channel for secret scan tasks
 )
 
 // FetchTagNameResponse represents the response from fetching a tag name
@@ -33,7 +33,7 @@ type FinalOutput struct {
 	Target        string           `json:"target"`          // Target scanned
 	Secrets       []SecretIssue    `json:"secrets"`         // Found secrets
 	Vulnerability []deps.VulnIssue `json:"vulnerabilities"` // Found vulnerabilities
-	Assets        []Assets         `json:"assets"`
+	Assets        Assets           `json:"assets"`
 }
 
 type Assets struct {

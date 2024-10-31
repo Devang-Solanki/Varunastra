@@ -22,6 +22,7 @@ func (a *Assets) AddDomainsAndUrls(content string) {
 
 	urls := GetUrls(content)
 	a.Urls = append(a.Urls, urls...)
+
 }
 
 // MakeUniqueDomains removes duplicate domains and subdomains
