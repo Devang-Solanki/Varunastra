@@ -97,8 +97,24 @@ func checkGemDependencyVulnerabilities(dep rubyaudit.Dependency, filename string
 }
 
 // checkGemDependencyConfusion checks for potential dependency confusion for a Gem dependency.
-func checkGemDependencyConfusion(dep Dependency) error {
+func checkGemDependencyConfusion(dep rubyaudit.Dependency) error {
 	log.Printf("Checking dependency confusion for Gem dependency: %s@%s", dep.Name, dep.Version)
+
+	apiURL := fmt.Sprintf("https://rubygems.org/gems/%s", dep.Name)
 	// Implement logic to check for dependency confusion, e.g., checking if the dependency exists in a public registry.
+
+	resp, err := http.Get(apiURL)
+	if err != nil {
+		log.Printf("Failed to fetch package info for %s: %v", dep.Name, err)
+		return err
+	}
+	defer resp.Body.Close()
+
+	// Check if the response status is 404 (Not Found) indicating the package does not exist on NPM
+	if resp.StatusCode == http.StatusNotFound {
+		log.Printf("Package %s does not exist on the public NPM registry.", dep.Name)
+		addDepenDencyIssueDetails(dep.Name, apiURL, dep, "NPM")
+		return nil
+	}
 	return nil
 }

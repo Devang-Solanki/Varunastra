@@ -10,6 +10,8 @@ import (
 
 func worker(wg *sync.WaitGroup, output *FinalOutput, scanMap config.ScanMap, regexDB []config.RegexDB) {
 	defer wg.Done()
+	var secrets []SecretIssue
+	var assets Assets
 	for task := range taskChannel {
 
 		if scanMap["secrets"] {
@@ -19,10 +21,21 @@ func worker(wg *sync.WaitGroup, output *FinalOutput, scanMap config.ScanMap, reg
 					log.Printf("Error scanning secrets: %s", err)
 				}
 			} else {
-				output.Secrets = append(output.Secrets, finalResult...)
+				secrets = append(secrets, finalResult...)
 			}
 		}
+
+		if scanMap["assets"] {
+			assets.AddDomainsAndUrls(string(*task.Content))
+		}
 	}
+
+	// Make all domains and URLs unique
+	assets.MakeUniqueDomains()
+	assets.MakeUniqueUrls()
+
+	output.Secrets = append(output.Secrets, secrets...)
+	output.Assets = append(output.Assets, assets)
 }
 
 func queueTask(path string, content *[]byte, id interface{}, imageName string) {

@@ -16,8 +16,6 @@ const (
 // Global variables
 var (
 	taskChannel = make(chan SecretScanTask, 50) // Channel for secret scan tasks
-	finalOutput FinalOutput                     // Output structure for scan results
-	scanMap     = make(map[string]bool)         // Map to track enabled scans
 )
 
 // FetchTagNameResponse represents the response from fetching a tag name
@@ -25,11 +23,22 @@ type FetchTagNameResponse struct {
 	ImageName string `json:"tag"` // Image name tag
 }
 
+type SubAndDom struct {
+	Subdomains []string `json:"subdomains"`
+	Domain     string   `json:"domain"`
+}
+
 // FinalOutput represents the final results of the scan
 type FinalOutput struct {
 	Target        string           `json:"target"`          // Target scanned
 	Secrets       []SecretIssue    `json:"secrets"`         // Found secrets
 	Vulnerability []deps.VulnIssue `json:"vulnerabilities"` // Found vulnerabilities
+	Assets        []Assets         `json:"assets"`
+}
+
+type Assets struct {
+	Domains []SubAndDom `json:"assets"`
+	Urls    []string    `json:"urls"`
 }
 
 // SecretIssue represents an identified secret issue

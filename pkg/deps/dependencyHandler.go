@@ -150,7 +150,7 @@ func handleGemLockfile(fileName string, content *[]byte) error {
 		if err != nil {
 			return err
 		}
-		// checkGemDependencyConfusion(dep)
+		checkGemDependencyConfusion(dep)
 	}
 
 	return nil

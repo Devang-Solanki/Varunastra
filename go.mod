@@ -8,7 +8,9 @@ require (
 	github.com/Devang-Solanki/go-ruby-bundler-audit v0.0.0-20240628095326-ed9f8dcd65cb
 	github.com/alecthomas/kong v1.2.1
 	github.com/google/go-containerregistry v0.20.2
+	github.com/weppos/publicsuffix-go v0.40.2
 	gopkg.in/yaml.v2 v2.4.0
+	mvdan.cc/xurls/v2 v2.5.0
 )
 
 require (
@@ -18,7 +20,6 @@ require (
 	github.com/docker/cli v27.3.1+incompatible // indirect
 	github.com/docker/distribution v2.8.3+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.7.0 // indirect
-	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
@@ -30,8 +31,10 @@ require (
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/stretchr/testify v1.9.0 // indirect
 	github.com/vbatts/tar-split v0.11.3 // indirect
+	golang.org/x/net v0.27.0 // indirect
 	golang.org/x/sync v0.8.0 // indirect
 	golang.org/x/sys v0.26.0 // indirect
+	golang.org/x/text v0.16.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gotest.tools/v3 v3.5.1 // indirect
 )

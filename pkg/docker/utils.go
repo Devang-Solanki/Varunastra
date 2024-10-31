@@ -6,11 +6,99 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/Devang-Solanki/Varunastra/pkg/config"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/weppos/publicsuffix-go/publicsuffix"
+	"mvdan.cc/xurls/v2"
 )
+
+// AddDomainsAndUrls appends new domains and URLs to assets
+func (a *Assets) AddDomainsAndUrls(content string) {
+	domains := GetSubdomainsAndDomains(content)
+	a.Domains = append(a.Domains, domains...)
+
+	urls := GetUrls(content)
+	a.Urls = append(a.Urls, urls...)
+}
+
+// MakeUniqueDomains removes duplicate domains and subdomains
+func (a *Assets) MakeUniqueDomains() {
+	uniqueDomains := make(map[string]map[string]struct{})
+
+	for _, domain := range a.Domains {
+		if _, exists := uniqueDomains[domain.Domain]; !exists {
+			uniqueDomains[domain.Domain] = make(map[string]struct{})
+		}
+		for _, sub := range domain.Subdomains {
+			uniqueDomains[domain.Domain][sub] = struct{}{}
+		}
+	}
+
+	a.Domains = make([]SubAndDom, 0, len(uniqueDomains))
+	for domainName, subdomainSet := range uniqueDomains {
+		subdomains := make([]string, 0, len(subdomainSet))
+		for sub := range subdomainSet {
+			subdomains = append(subdomains, sub)
+		}
+		a.Domains = append(a.Domains, SubAndDom{Domain: domainName, Subdomains: subdomains})
+	}
+}
+
+// MakeUniqueUrls removes duplicate URLs
+func (a *Assets) MakeUniqueUrls() {
+	uniqueUrls := make(map[string]struct{})
+	for _, url := range a.Urls {
+		uniqueUrls[url] = struct{}{}
+	}
+
+	a.Urls = make([]string, 0, len(uniqueUrls))
+	for url := range uniqueUrls {
+		a.Urls = append(a.Urls, url)
+	}
+}
+
+func GetUrls(content string) []string {
+	rxStrict := xurls.Strict()
+	urls := rxStrict.FindAllString(content, -1) // []string{"http://foo.com/"}
+	return urls
+}
+
+func GetSubdomainsAndDomains(content string) []SubAndDom {
+	pattern := `[A-Za-z0-9](?:[A-Za-z0-9.-]){2,63}\.[A-Za-z0-9]{2,18}`
+	regex := regexp.MustCompile(pattern)
+
+	subdomains := regex.FindAllString(content, -1)
+
+	domainMap := make(map[string][]string)
+
+	for _, subdomain := range subdomains {
+		domain, _ := publicsuffix.DomainFromListWithOptions(
+			publicsuffix.DefaultList,
+			subdomain,
+			&publicsuffix.FindOptions{
+				IgnorePrivate: true,
+			},
+		)
+
+		domain = strings.ToLower(domain)
+		subdomain = strings.ToLower(subdomain)
+
+		if domain != "" && subdomain != domain {
+			domainMap[domain] = append(domainMap[domain], subdomain)
+		}
+	}
+
+	var filteredDomains []SubAndDom
+	for domain, subdomains := range domainMap {
+		data := SubAndDom{Domain: domain, Subdomains: subdomains}
+		filteredDomains = append(filteredDomains, data)
+	}
+
+	return filteredDomains
+}
 
 // fetchTagsFromDockerHub fetches available tags for an image from Docker Hub
 func fetchTagsFromDockerHub(imageName string) ([]string, error) {

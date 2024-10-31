@@ -2,19 +2,20 @@
 
 Introducing Varunastra, an innovative tool designed to enhance the security of Docker environments. Named after The Varunastra (वरुणास्त्र), it is the water weapon according to the Indian scriptures, incepted by Varuna, god of hydrosphere. Varunastra is engineered to detect and help mitigate vulnerabilities in Docker, ensuring robust security across all Docker containers and images.
 
+## Key Features
 
-Objective: Prepare for submission to the BlackHat Tool Arsenal.
+- **Secret Scanning:** Reduces the risk of sensitive data leaks.
+- **Asset Extraction:** Retrieves assets such as domain/subdomains and urls from Docker images for bug bounty hunters.
+- **Customizable Solution:** Define regex patterns and blacklists to meet specific needs.
+- **Dependency Checks:** Automates assessments for quicker threat identification.
 
-Development Roadmap:
+**Supported Lock Files**
+| Language   | File                |
+|------------|---------------------|
+| Ruby       | Gemfile.lock        |
+| Javascript | package-lock.json   |
+|            | yarn.lock           |
 
-Phase 1: Secret Scanner
-- Image Scanning: Complete
-- Container Scanning: Currently under consideration
-
-Phase 2: Vulnerability Scanner
-- Details to be determined
-
-Varunastra aims to fortify Docker systems by detecting hidden secrets and vulnerabilities, ensuring robust security across all containers and images.
 
 ### Usage
 
