@@ -48,6 +48,9 @@ func ProcessImage(imageName string, scanMap map[string]bool, regexDB []config.Re
 
 // processRemoteImage scans all tags of a remote Docker image.
 func processImage(imageName string, scanMap map[string]bool, regexDB []config.RegexDB, excludedPatterns config.ExcludedPatterns, allTagsScan bool) ([]FinalOutput, error) {
+	imageSeen := make(map[string]bool)
+	var combinedOutput []FinalOutput
+
 	ref, err := name.ParseReference(imageName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse image reference %s: %v", imageName, err)
@@ -58,9 +61,24 @@ func processImage(imageName string, scanMap map[string]bool, regexDB []config.Re
 		return nil, fmt.Errorf("failed to fetch tags or no tags found for image %s: %v", imageName, err)
 	}
 
-	var combinedOutput []FinalOutput
 	for _, tag := range tags {
-		output, err := scanImageTag(imageName, tag, scanMap, regexDB, excludedPatterns)
+		taggedImage := fmt.Sprintf("%s:%s", strings.Split(imageName, ":")[0], tag)
+		ref, err := name.ParseReference(taggedImage)
+		if err != nil {
+			return []FinalOutput{}, fmt.Errorf("failed to parse image reference %s: %v", taggedImage, err)
+		}
+
+		img, err := remote.Image(ref)
+		if err != nil {
+			return []FinalOutput{}, fmt.Errorf("failed to retrieve remote image %s: %v", taggedImage, err)
+		}
+		hash, _ := img.Digest()
+		if imageSeen[hash.String()] {
+			log.Printf("We have seen \"%s\" tag before latest skipping it from scanning", tag)
+			continue
+		}
+		imageSeen[hash.String()] = true
+		output, err := scanImageTag(taggedImage, img, scanMap, regexDB, excludedPatterns)
 		if err != nil {
 			return nil, err
 		}
@@ -73,17 +91,7 @@ func processImage(imageName string, scanMap map[string]bool, regexDB []config.Re
 }
 
 // scanImageTag scans a specific image tag for vulnerabilities.
-func scanImageTag(imageName, tag string, scanMap map[string]bool, regexDB []config.RegexDB, excludedPatterns config.ExcludedPatterns) (FinalOutput, error) {
-	taggedImage := fmt.Sprintf("%s:%s", strings.Split(imageName, ":")[0], tag)
-	ref, err := name.ParseReference(taggedImage)
-	if err != nil {
-		return FinalOutput{}, fmt.Errorf("failed to parse image reference %s: %v", taggedImage, err)
-	}
-
-	img, err := remote.Image(ref)
-	if err != nil {
-		return FinalOutput{}, fmt.Errorf("failed to retrieve remote image %s: %v", taggedImage, err)
-	}
+func scanImageTag(taggedImage string, img v1.Image, scanMap map[string]bool, regexDB []config.RegexDB, excludedPatterns config.ExcludedPatterns) (FinalOutput, error) {
 
 	output := FinalOutput{Target: taggedImage}
 	errs := launchWorkerPool(img, taggedImage, excludedPatterns, scanMap, regexDB, &output)
@@ -98,11 +106,18 @@ func scanImageTag(imageName, tag string, scanMap map[string]bool, regexDB []conf
 func launchWorkerPool(img v1.Image, name string, excludedPatterns config.ExcludedPatterns, scanMap map[string]bool, regexDB []config.RegexDB, output *FinalOutput) []error {
 	var wg sync.WaitGroup
 	errorCh := make(chan error, 2)
+	taskChannel := make(chan SecretScanTask, 1000)
+
+	var workerwg sync.WaitGroup
+	for i := 0; i < workerCount; i++ {
+		workerwg.Add(1)
+		go worker(&workerwg, output, scanMap, regexDB, taskChannel)
+	}
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		if err := processLayers(img, excludedPatterns, output, name); err != nil {
+		if err := processLayers(img, excludedPatterns, output, name, taskChannel); err != nil {
 			errorCh <- fmt.Errorf("error processing layers: %w", err)
 		}
 	}()
@@ -110,13 +125,16 @@ func launchWorkerPool(img v1.Image, name string, excludedPatterns config.Exclude
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		if err := processHistoryAndENV(img, name); err != nil {
+		if err := processHistoryAndENV(img, name, taskChannel); err != nil {
 			errorCh <- fmt.Errorf("error scanning environment variables: %w", err)
 		}
 	}()
 
 	wg.Wait()
 	close(errorCh)
+
+	close(taskChannel)
+	workerwg.Wait()
 
 	var errs []error
 	for err := range errorCh {
@@ -126,7 +144,7 @@ func launchWorkerPool(img v1.Image, name string, excludedPatterns config.Exclude
 }
 
 // processLayers scans each layer of an image.
-func processLayers(img v1.Image, excludedPatterns config.ExcludedPatterns, output *FinalOutput, imagName string) error {
+func processLayers(img v1.Image, excludedPatterns config.ExcludedPatterns, output *FinalOutput, imagName string, taskChannel chan<- SecretScanTask) error {
 	layers, err := img.Layers()
 	if err != nil {
 		return fmt.Errorf("failed to get image layers: %w", err)
@@ -146,7 +164,7 @@ func processLayers(img v1.Image, excludedPatterns config.ExcludedPatterns, outpu
 		go func(layer v1.Layer, key v1.Hash) {
 			defer wg.Done()
 			defer func() { <-sem }()
-			if err := processLayer(layer, key, excludedPatterns, imagName, output); err != nil {
+			if err := processLayer(layer, key, excludedPatterns, imagName, output, taskChannel); err != nil {
 				log.Printf("error processing layer: %s", err)
 			}
 		}(layer, key)
@@ -157,7 +175,7 @@ func processLayers(img v1.Image, excludedPatterns config.ExcludedPatterns, outpu
 }
 
 // processLayer scans an individual layer of an image.
-func processLayer(layer v1.Layer, digest v1.Hash, excludedPatterns config.ExcludedPatterns, imageName string, output *FinalOutput) error {
+func processLayer(layer v1.Layer, digest v1.Hash, excludedPatterns config.ExcludedPatterns, imageName string, output *FinalOutput, taskChannel chan<- SecretScanTask) error {
 	log.Println("Scanning Layer:", digest.String())
 	r, err := layer.Uncompressed()
 	if err != nil {
@@ -177,7 +195,13 @@ func processLayer(layer v1.Layer, digest v1.Hash, excludedPatterns config.Exclud
 		if header.Typeflag != tar.TypeReg || isExcluded(header.Name, excludedPatterns) {
 			continue
 		}
-		err = processFileContent(tr, header, digest, imageName, output)
+
+		// Handle specific file names directly
+		if handleSpecialFiles(header.Name) {
+			continue
+		}
+
+		err = processFileContent(tr, header, digest, imageName, output, taskChannel)
 		if err != nil {
 			log.Printf("Error processing file %s: %s", header.Name, err)
 		}
@@ -186,7 +210,7 @@ func processLayer(layer v1.Layer, digest v1.Hash, excludedPatterns config.Exclud
 }
 
 // processFileContent scans the content of a file in a layer.
-func processFileContent(tr *tar.Reader, header *tar.Header, digest v1.Hash, imageName string, output *FinalOutput) error {
+func processFileContent(tr *tar.Reader, header *tar.Header, digest v1.Hash, imageName string, output *FinalOutput, taskChannel chan<- SecretScanTask) error {
 
 	// Scan the file content for secrets
 	// Check if it's a known dependency file
@@ -203,15 +227,15 @@ func processFileContent(tr *tar.Reader, header *tar.Header, digest v1.Hash, imag
 
 	if header.Size > maxFileSize {
 		// Handle large files by writing to a temp file
-		return processLargeFile(tr, header.Name, digest, imageName)
+		return processLargeFile(tr, header.Name, digest, imageName, taskChannel)
 	} else {
 		// Handle smaller files directly
-		return processSmallFile(tr, header.Name, digest, imageName)
+		return processSmallFile(tr, header.Name, digest, imageName, taskChannel)
 	}
 }
 
 // processHistoryAndENV scans the history and environment variables for secrets.
-func processHistoryAndENV(img v1.Image, image string) error {
+func processHistoryAndENV(img v1.Image, image string, taskChannel chan<- SecretScanTask) error {
 	config, err := img.ConfigFile()
 	if err != nil {
 		return fmt.Errorf("failed to get image config: %w", err)
@@ -219,12 +243,12 @@ func processHistoryAndENV(img v1.Image, image string) error {
 	for i, entry := range config.History {
 		if entry.CreatedBy != "" {
 			createdByContent := []byte(entry.CreatedBy)
-			queueTask(fmt.Sprintf("history:%d", i), &createdByContent, fmt.Sprintf("history:%d", i), image)
+			queueTask(fmt.Sprintf("history:%d", i), &createdByContent, fmt.Sprintf("history:%d", i), image, taskChannel)
 		}
 	}
 	for _, envVar := range config.Config.Env {
 		envVarContent := []byte(envVar)
-		queueTask("ENV", &envVarContent, config.RootFS.DiffIDs[0], image)
+		queueTask("ENV", &envVarContent, config.RootFS.DiffIDs[0], image, taskChannel)
 	}
 	return nil
 }

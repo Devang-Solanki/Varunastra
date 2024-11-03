@@ -48,7 +48,7 @@ func isExcluded(filePath string, excludedPatterns config.ExcludedPatterns) bool 
 	return false
 }
 
-func processLargeFile(tr *tar.Reader, fileName string, digest v1.Hash, imageName string) error {
+func processLargeFile(tr *tar.Reader, fileName string, digest v1.Hash, imageName string, taskChannel chan<- SecretScanTask) error {
 	tempFile, err := os.CreateTemp("", "large-file-*.tmp")
 	if err != nil {
 		return fmt.Errorf("failed to create temp file: %w", err)
@@ -62,14 +62,14 @@ func processLargeFile(tr *tar.Reader, fileName string, digest v1.Hash, imageName
 
 	// Reopen the temp file for reading
 	tempFile.Seek(0, io.SeekStart)
-	if err := processFileFromTemp(tempFile, fileName, digest, imageName); err != nil {
+	if err := processFileFromTemp(tempFile, fileName, digest, imageName, taskChannel); err != nil {
 		return fmt.Errorf("error scanning file from temp file: %w", err)
 	}
 
 	return nil
 }
 
-func processSmallFile(tr *tar.Reader, fileName string, digest v1.Hash, imageName string) error {
+func processSmallFile(tr *tar.Reader, fileName string, digest v1.Hash, imageName string, taskChannel chan<- SecretScanTask) error {
 	var buf bytes.Buffer
 	if _, err := io.Copy(&buf, tr); err != nil {
 		return fmt.Errorf("failed to read file %s: %v", fileName, err)
@@ -77,12 +77,12 @@ func processSmallFile(tr *tar.Reader, fileName string, digest v1.Hash, imageName
 	}
 	content := buf.Bytes()
 
-	queueTask(fileName, &content, digest, imageName)
+	queueTask(fileName, &content, digest, imageName, taskChannel)
 
 	return nil
 }
 
-func processFileFromTemp(tempFile *os.File, fileName string, digest v1.Hash, imageName string) error {
+func processFileFromTemp(tempFile *os.File, fileName string, digest v1.Hash, imageName string, taskChannel chan<- SecretScanTask) error {
 	const bufferSize = 4096
 	buffer := make([]byte, bufferSize)
 
@@ -98,7 +98,7 @@ func processFileFromTemp(tempFile *os.File, fileName string, digest v1.Hash, ima
 			break
 		}
 		content := buffer[:n]
-		queueTask(fileName, &content, digest, imageName)
+		queueTask(fileName, &content, digest, imageName, taskChannel)
 	}
 	return nil
 }

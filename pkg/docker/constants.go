@@ -13,11 +13,6 @@ const (
 	wh  = ".wh."
 )
 
-// Global variables
-var (
-	taskChannel = make(chan SecretScanTask, 1000) // Channel for secret scan tasks
-)
-
 // FetchTagNameResponse represents the response from fetching a tag name
 type FetchTagNameResponse struct {
 	ImageName string `json:"tag"` // Image name tag

@@ -8,12 +8,11 @@ import (
 	"github.com/Devang-Solanki/Varunastra/pkg/config"
 )
 
-func worker(wg *sync.WaitGroup, output *FinalOutput, scanMap config.ScanMap, regexDB []config.RegexDB) {
+func worker(wg *sync.WaitGroup, output *FinalOutput, scanMap config.ScanMap, regexDB []config.RegexDB, taskChannel <-chan SecretScanTask) {
 	defer wg.Done()
 	var secrets []SecretIssue
 	var assets Assets
 	for task := range taskChannel {
-
 		if scanMap["secrets"] {
 			finalResult, err := secretScanner(task.Path, task.Content, task.ID, regexDB)
 			if err != nil {
@@ -38,7 +37,7 @@ func worker(wg *sync.WaitGroup, output *FinalOutput, scanMap config.ScanMap, reg
 	output.Assets = assets
 }
 
-func queueTask(path string, content *[]byte, id interface{}, imageName string) {
+func queueTask(path string, content *[]byte, id interface{}, imageName string, taskChannel chan<- SecretScanTask) {
 	task := SecretScanTask{
 		Path:      path,
 		Content:   content,

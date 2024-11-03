@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
 	"os"
 	"strings"
@@ -29,7 +30,8 @@ func handleScan(cli config.CLI, regexDB []config.RegexDB, excludedPatterns confi
 
 	log.Println("Scanning completed.")
 
-	config.HandleOutput(output, cli)
+	data, _ := json.MarshalIndent(output, "", "  ")
+	config.HandleOutput(data, cli)
 
 }
 
