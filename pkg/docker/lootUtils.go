@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"reflect"
 	"strings"
 	"sync"
 
@@ -18,232 +17,183 @@ import (
 )
 
 var (
-	output FinalOutput
-	scans  config.ScanMap
+	scans config.ScanMap
 )
 
-// processImage processes a single Docker image
-func ProcessImage(imageName string, scanMap map[string]bool, regexDB []config.RegexDB, excludedPatterns config.ExcludedPatterns) (FinalOutput, error) {
+type ScanWorker struct {
+	scanMap   map[string]bool
+	regexDB   []config.RegexDB
+	output    *FinalOutput
+	imageName string
+}
+
+// ProcessImage scans a Docker image for vulnerabilities.
+func ProcessImage(imageName string, scanMap map[string]bool, regexDB []config.RegexDB, excludedPatterns config.ExcludedPatterns, allTagsScan bool) ([]FinalOutput, error) {
 	scans = scanMap
-	output.Target = imageName
-
-	var workerwg sync.WaitGroup
-	for i := 0; i < workerCount; i++ {
-		workerwg.Add(1)
-		go worker(&workerwg, &output, scans, regexDB)
-	}
-
+	var combinedOutput []FinalOutput
 	log.Println("Starting Scan for Image:", imageName)
-
-	var img v1.Image
-	var err error
 
 	isLocalFile := strings.HasSuffix(imageName, ".tar")
 
-	if isLocalFile {
-		img, err = tarball.ImageFromPath(imageName, nil)
-		if err != nil {
-			return FinalOutput{}, fmt.Errorf("failed to load local image %s: %v", imageName, err)
+	var _ v1.Image
+	var err error
 
+	if isLocalFile {
+		_, err = tarball.ImageFromPath(imageName, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load local image %s: %v", imageName, err)
 		}
 	} else {
-		ref, err := name.ParseReference(imageName)
+		combinedOutput, err = processImage(imageName, scanMap, regexDB, excludedPatterns, allTagsScan)
 		if err != nil {
-			return FinalOutput{}, fmt.Errorf("failed to parse image reference %s: %v", imageName, err)
-		}
-
-		// Try to get the remote image
-		img, err = remote.Image(ref)
-		if err != nil {
-			log.Printf("Failed to retrieve remote image %s: %v", imageName, err)
-			// Try fetching available tags if latest doesn't work
-			if strings.HasSuffix(imageName, ":latest") || !strings.Contains(imageName, ":") {
-				tags, err := fetchTagsFromDockerHub(imageName)
-				if err != nil {
-					return FinalOutput{}, fmt.Errorf("failed to fetch tags for image %s: %v", imageName, err)
-				}
-				if len(tags) > 0 {
-					// Retry with the first available tag
-					log.Printf("Retrying with the first available tag: %s", tags[0])
-					imageName = strings.Split(imageName, ":")[0] + ":" + tags[0]
-					ref, err = name.ParseReference(imageName)
-					if err != nil {
-						return FinalOutput{}, fmt.Errorf("failed to parse image reference %s: %v", imageName, err)
-					}
-					img, err = remote.Image(ref)
-					if err != nil {
-						return FinalOutput{}, fmt.Errorf("failed to retrieve remote image %s: %v", imageName, err)
-					}
-				} else {
-					return FinalOutput{}, fmt.Errorf("no available tags found for image %s", imageName)
-				}
-			} else {
-				return FinalOutput{}, fmt.Errorf("something went wrong for image %s", imageName)
-			}
+			return nil, err
 		}
 	}
 
-	// Create a WaitGroup to wait for goroutines to complete
-	var wg sync.WaitGroup
+	return combinedOutput, nil
+}
 
-	// Create an error channel to collect errors from goroutines
-	errorCh := make(chan error, 2)
-
-	// Run processLayers in a goroutine
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		if err := processLayers(img, imageName, excludedPatterns); err != nil {
-			errorCh <- fmt.Errorf("error processing layers: %w", err)
-			return
-		}
-	}()
-
-	// Run processHistoryAndENV in a goroutine
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		if err := processHistoryAndENV(img, imageName); err != nil {
-			errorCh <- fmt.Errorf("error scanning environment variables: %w", err)
-			return
-		}
-	}()
-
-	// Close the error channel once all goroutines are done
-	go func() {
-		wg.Wait()
-		close(errorCh)
-	}()
-
-	// Check for any errors from goroutines
-	for err := range errorCh {
-		return FinalOutput{}, err
+// processRemoteImage scans all tags of a remote Docker image.
+func processImage(imageName string, scanMap map[string]bool, regexDB []config.RegexDB, excludedPatterns config.ExcludedPatterns, allTagsScan bool) ([]FinalOutput, error) {
+	ref, err := name.ParseReference(imageName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse image reference %s: %v", imageName, err)
 	}
 
-	close(taskChannel)
-	workerwg.Wait()
+	tags, err := fetchTagsFromRegistry(imageName, ref.Context().Registry)
+	if err != nil || len(tags) == 0 {
+		return nil, fmt.Errorf("failed to fetch tags or no tags found for image %s: %v", imageName, err)
+	}
+
+	var combinedOutput []FinalOutput
+	for _, tag := range tags {
+		output, err := scanImageTag(imageName, tag, scanMap, regexDB, excludedPatterns)
+		if err != nil {
+			return nil, err
+		}
+		combinedOutput = append(combinedOutput, output)
+		if !allTagsScan {
+			break
+		}
+	}
+	return combinedOutput, nil
+}
+
+// scanImageTag scans a specific image tag for vulnerabilities.
+func scanImageTag(imageName, tag string, scanMap map[string]bool, regexDB []config.RegexDB, excludedPatterns config.ExcludedPatterns) (FinalOutput, error) {
+	taggedImage := fmt.Sprintf("%s:%s", strings.Split(imageName, ":")[0], tag)
+	ref, err := name.ParseReference(taggedImage)
+	if err != nil {
+		return FinalOutput{}, fmt.Errorf("failed to parse image reference %s: %v", taggedImage, err)
+	}
+
+	img, err := remote.Image(ref)
+	if err != nil {
+		return FinalOutput{}, fmt.Errorf("failed to retrieve remote image %s: %v", taggedImage, err)
+	}
+
+	output := FinalOutput{Target: taggedImage}
+	errs := launchWorkerPool(img, taggedImage, excludedPatterns, scanMap, regexDB, &output)
+	if len(errs) > 0 {
+		return output, fmt.Errorf("error(s) during scan: %v", errs)
+	}
+
 	return output, nil
 }
 
-// Function to determine if a layer is compressed or uncompressed and to get the appropriate hash or diff ID
-func getLayerInfo(layer v1.Layer) (v1.Hash, error) {
-	// Determine if the layer is compressed or uncompressed
-	isCompressed, err := isCompressedLayer(layer)
-	if err != nil {
-		return v1.Hash{}, err
-	}
-
-	// Get the appropriate identifier
-	if isCompressed {
-		digest, err := layer.Digest()
-		if err != nil {
-			return v1.Hash{}, err
-		}
-		return digest, nil
-	} else {
-		diffID, err := layer.DiffID()
-		if err != nil {
-			return v1.Hash{}, err
-		}
-		return diffID, nil
-	}
-}
-
-// Function to check if the layer is compressed or uncompressed
-func isCompressedLayer(layer v1.Layer) (bool, error) {
-	// Use reflection to check if the layer is of the type that has the UncompressedLayer method
-	layerType := reflect.TypeOf(layer)
-	_, uncompressed := layerType.Elem().FieldByName("UncompressedLayer")
-	return !uncompressed, nil
-}
-
-// processLayers processes the layers of a Docker image
-func processLayers(img v1.Image, imageName string, excludedPatterns config.ExcludedPatterns) error {
+// launchWorkerPool starts a pool of workers to scan layers and environment history concurrently.
+func launchWorkerPool(img v1.Image, name string, excludedPatterns config.ExcludedPatterns, scanMap map[string]bool, regexDB []config.RegexDB, output *FinalOutput) []error {
 	var wg sync.WaitGroup
-	sem := make(chan struct{}, maxGoroutines) // Semaphore channel
+	errorCh := make(chan error, 2)
 
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := processLayers(img, excludedPatterns, output, name); err != nil {
+			errorCh <- fmt.Errorf("error processing layers: %w", err)
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := processHistoryAndENV(img, name); err != nil {
+			errorCh <- fmt.Errorf("error scanning environment variables: %w", err)
+		}
+	}()
+
+	wg.Wait()
+	close(errorCh)
+
+	var errs []error
+	for err := range errorCh {
+		errs = append(errs, err)
+	}
+	return errs
+}
+
+// processLayers scans each layer of an image.
+func processLayers(img v1.Image, excludedPatterns config.ExcludedPatterns, output *FinalOutput, imagName string) error {
 	layers, err := img.Layers()
 	if err != nil {
 		return fmt.Errorf("failed to get image layers: %w", err)
 	}
 
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, maxGoroutines)
+
 	for _, layer := range layers {
 		key, err := getLayerInfo(layer)
 		if err != nil {
-			return fmt.Errorf("error getting layer Hash: %s", err)
+			return fmt.Errorf("error getting layer hash: %w", err)
 		}
 
-		sem <- struct{}{} // Acquire a token
-		wg.Add(1)         // Increment the WaitGroup counter
-
-		go func(layer v1.Layer, key v1.Hash, imageName string) {
-			defer wg.Done()          // Decrement the counter when the goroutine completes
-			defer func() { <-sem }() // Release the token
-
-			if err := processLayer(layer, key, imageName, excludedPatterns); err != nil {
+		sem <- struct{}{}
+		wg.Add(1)
+		go func(layer v1.Layer, key v1.Hash) {
+			defer wg.Done()
+			defer func() { <-sem }()
+			if err := processLayer(layer, key, excludedPatterns, imagName, output); err != nil {
 				log.Printf("error processing layer: %s", err)
 			}
-		}(layer, key, imageName)
+		}(layer, key)
 	}
 
-	wg.Wait() // Wait for all goroutines to finish
+	wg.Wait()
 	return nil
 }
 
-// processLayer reads and processes the content of a single image layer
-func processLayer(layer v1.Layer, digest v1.Hash, imageName string, excludedPatterns config.ExcludedPatterns) error {
-	log.Println("Scanning Layers:", digest.String())
-
-	// fileSemaphore := make(chan struct{}, 10)
-
+// processLayer scans an individual layer of an image.
+func processLayer(layer v1.Layer, digest v1.Hash, excludedPatterns config.ExcludedPatterns, imageName string, output *FinalOutput) error {
+	log.Println("Scanning Layer:", digest.String())
 	r, err := layer.Uncompressed()
 	if err != nil {
 		return fmt.Errorf("failed to get uncompressed layer: %w", err)
 	}
 	defer r.Close()
 
-	// gitSkip := false
-
 	tr := tar.NewReader(r)
 	for {
 		header, err := tr.Next()
 		if err == io.EOF {
-			break // End of tar archive
+			break
 		}
 		if err != nil {
 			return fmt.Errorf("error reading tar archive: %w", err)
 		}
-
 		if header.Typeflag != tar.TypeReg || isExcluded(header.Name, excludedPatterns) {
 			continue
 		}
-
-		// Handle specific file names directly
-		if handleSpecialFiles(header.Name) {
-			continue
-		}
-
-		// if strings.Contains(header.Name, ".git/") && gitSkip {
-		// 	continue
-		// }
-
-		// if strings.Contains(header.Name, ".git/HEAD") && scanMap["vuln"] {
-		// 	gitSkip = true
-		// 	handleGitRepo(header.Name)
-		// 	continue
-		// }
-
-		err = processFileContent(tr, header, digest, imageName)
+		err = processFileContent(tr, header, digest, imageName, output)
 		if err != nil {
 			log.Printf("Error processing file %s: %s", header.Name, err)
 		}
-
 	}
-
 	return nil
 }
 
-func processFileContent(tr *tar.Reader, header *tar.Header, digest v1.Hash, imageName string) error {
+// processFileContent scans the content of a file in a layer.
+func processFileContent(tr *tar.Reader, header *tar.Header, digest v1.Hash, imageName string, output *FinalOutput) error {
 
 	// Scan the file content for secrets
 	// Check if it's a known dependency file
@@ -267,24 +217,21 @@ func processFileContent(tr *tar.Reader, header *tar.Header, digest v1.Hash, imag
 	}
 }
 
-// processHistory scans the history of a Docker image for potential secrets
-func processHistoryAndENV(img v1.Image, imageName string) error {
+// processHistoryAndENV scans the history and environment variables for secrets.
+func processHistoryAndENV(img v1.Image, image string) error {
 	config, err := img.ConfigFile()
 	if err != nil {
 		return fmt.Errorf("failed to get image config: %w", err)
 	}
-
 	for i, entry := range config.History {
 		if entry.CreatedBy != "" {
 			createdByContent := []byte(entry.CreatedBy)
-			queueTask(fmt.Sprintf("history:%d", i), &createdByContent, fmt.Sprintf("history:%d", i), imageName)
+			queueTask(fmt.Sprintf("history:%d", i), &createdByContent, fmt.Sprintf("history:%d", i), image)
 		}
 	}
-
 	for _, envVar := range config.Config.Env {
 		envVarContent := []byte(envVar)
-		queueTask("ENV", &envVarContent, config.RootFS.DiffIDs[0], imageName)
+		queueTask("ENV", &envVarContent, config.RootFS.DiffIDs[0], image)
 	}
-
 	return nil
 }

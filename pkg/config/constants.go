@@ -40,6 +40,8 @@ type BlacklistedPattern struct {
 type CLI struct {
 	Target string `kong:"required,help='Target string'"`                      // Target to scan
 	Scans  string `kong:"help='Comma-separated scans (secrets,vuln,assets)'"` // Scans to perform
+	All    bool   `kong:"Enable scanning for all tags."`
+	Output string `kong:"Save JSON output to a file"`
 }
 
 // RegexConfig defines a map for regex patterns

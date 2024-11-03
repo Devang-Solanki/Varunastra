@@ -18,7 +18,33 @@ func initRegex(configFilePath string) ([]RegexDB, error) {
 	// Read the JSON file
 	data, err := os.ReadFile(configFilePath)
 	if err != nil {
-		return nil, fmt.Errorf("error reading file: %w", err)
+		if strings.Contains(err.Error(), "no such file or directory") {
+			// File doesn't exist, attempt to download it
+			log.Println("Regex file does not exist, attempt to download it from: devanghacks.in/varunastra/regexes.json")
+			url := "https://devanghacks.in/varunastra/regexes.json"
+			resp, err := http.Get(url)
+			if err != nil {
+				return nil, fmt.Errorf("failed to download file: %w", err)
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != http.StatusOK {
+				return nil, fmt.Errorf("failed to download file: received status %s", resp.Status)
+			}
+
+			// Read the response body
+			data, err = io.ReadAll(resp.Body)
+			if err != nil {
+				return nil, fmt.Errorf("failed to read downloaded response body: %w", err)
+			}
+
+			// Save the downloaded file locally
+			if err := os.WriteFile(configFilePath, data, 0644); err != nil {
+				return nil, fmt.Errorf("failed to save downloaded file: %w", err)
+			}
+		} else {
+			return nil, fmt.Errorf("error reading file: %w", err)
+		}
 	}
 
 	// Unmarshal JSON data into a map

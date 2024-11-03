@@ -24,7 +24,7 @@ func handleScan(cli config.CLI, regexDB []config.RegexDB, excludedPatterns confi
 	imageName := cli.Target
 
 	// Process each image
-	output, err := docker.ProcessImage(imageName, scanMap, regexDB, excludedPatterns)
+	output, err := docker.ProcessImage(imageName, scanMap, regexDB, excludedPatterns, cli.All)
 	if err != nil {
 		log.Fatalln(err)
 	}

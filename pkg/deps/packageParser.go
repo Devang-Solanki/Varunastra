@@ -3,7 +3,6 @@ package deps
 import (
 	"bufio"
 	"bytes"
-	"fmt"
 	"log"
 	"regexp"
 	"strings"
@@ -141,7 +140,6 @@ func extractGemfileLockMainDependencies(content *[]byte) []Dependency {
 			if len(parts) >= 2 {
 				name := strings.TrimSuffix(parts[0], " ")
 				version := strings.Trim(parts[1], "()")
-				fmt.Println(name, version)
 				deps = append(deps, Dependency{Name: name, Version: version})
 			}
 		}

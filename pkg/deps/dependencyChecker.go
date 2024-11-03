@@ -35,11 +35,7 @@ func checkDependencyVulnerabilities(dep Dependency, filename string, env string)
 		return fmt.Errorf("HTTP status %d for %s@%s", resp.StatusCode, dep.Name, dep.Version)
 	}
 
-	var response struct {
-		AdvisoryKeys []struct {
-			ID string `json:"id"`
-		} `json:"advisories"`
-	}
+	var response Response
 
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
 		log.Printf("Failed to parse vulnerabilities for %s@%s: %v", dep.Name, dep.Version, err)

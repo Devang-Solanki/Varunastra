@@ -74,13 +74,14 @@ func getAdvisoryDetails(advisoryID string) (AdvisoryDetails, error) {
 	}
 
 	// Log the detailed advisory information
+	fmt.Println()
 	log.Printf("Advisory Details for ID %s:", advisoryID)
 	log.Printf("- URL: %s", details.URL)
 	log.Printf("- Title: %s", details.Title)
 	log.Printf("- Aliases: %v", details.Aliases)
 	log.Printf("- CVSS v3 Score: %.1f", details.CVSS3Score)
 	log.Printf("- CVSS v3 Vector: %s", details.CVSS3Vector)
-
+	fmt.Println()
 	return details, nil
 }
 
@@ -106,9 +107,8 @@ func addDepenDencyIssueDetails[T AdvisoryDetails | string | []rubyaudit.Advisory
 			issue.Title = vv.Title
 			issue.Ref = vv.URL
 		}
-
 	}
-	switch v := any(details).(type) {
+	switch v := any(dep).(type) {
 	case Dependency:
 		issue.Path = fmt.Sprintf("Package: %s, File: %s", v.Name+":"+v.Version, filename)
 	case rubyaudit.Dependency:
