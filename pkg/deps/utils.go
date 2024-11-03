@@ -11,6 +11,32 @@ import (
 	"github.com/Devang-Solanki/go-ruby-bundler-audit/rubyaudit"
 )
 
+type FileTracker struct {
+	seen map[string]bool
+}
+
+// NewFileTracker creates and returns a new FileTracker instance
+func NewFileTracker() *FileTracker {
+	return &FileTracker{
+		seen: make(map[string]bool),
+	}
+}
+
+// MarkFileAsSeen marks the specified file as processed
+func (ft *FileTracker) MarkFileAsSeen(fileName string) {
+	ft.seen[fileName] = true
+}
+
+// IsFileSeen checks if the specified file has been marked as seen
+func (ft *FileTracker) IsFileSeen(fileName string) bool {
+	return ft.seen[fileName]
+}
+
+// ClearSeenMap clears the seen map
+func (ft *FileTracker) ClearSeenMap() {
+	ft.seen = make(map[string]bool) // Reinitialize the map
+}
+
 // isKnownDependencyFile checks if a file is one of the known dependency files
 func IsKnownDependencyFile(fileName string) bool {
 	for _, knownFile := range KnownDependencyFiles {
@@ -86,7 +112,7 @@ func getAdvisoryDetails(advisoryID string) (AdvisoryDetails, error) {
 }
 
 // addIssueDetails adds details about a vulnerability or dependency issue to the final result set.
-func addDepenDencyIssueDetails[T AdvisoryDetails | string | []rubyaudit.Advisory, D Dependency | rubyaudit.Dependency](details T, filename string, dep D, env string) {
+func addDepenDencyIssueDetails[T AdvisoryDetails | string | []rubyaudit.Advisory, D Dependency | rubyaudit.Dependency](details T, filename string, dep D, env string) VulnIssue {
 	var issue VulnIssue
 	switch v := any(details).(type) {
 	case AdvisoryDetails:
@@ -115,5 +141,5 @@ func addDepenDencyIssueDetails[T AdvisoryDetails | string | []rubyaudit.Advisory
 		issue.Path = fmt.Sprintf("Package: %s, File: %s", v.Name+":"+v.Version, filename)
 	}
 
-	issues = append(issues, issue)
+	return issue
 }

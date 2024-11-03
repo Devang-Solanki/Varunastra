@@ -12,31 +12,15 @@ import (
 	"github.com/Devang-Solanki/go-ruby-bundler-audit/rubyaudit"
 )
 
-var (
-	issues []VulnIssue
-	seen   map[string]bool
-)
-
-// InitializeSeenMap ensures the seen map is initialized
-func initializeSeenMap() {
-	if seen == nil {
-		seen = make(map[string]bool)
-	}
-}
-
-// MarkFileAsSeen marks the specified file as processed
-func markFileAsSeen(fileName string) {
-	initializeSeenMap()
-	seen[fileName] = true
-}
-
 // HandleDependencyFile processes and checks a specific dependency file
 func HandleDependencyFile(fileName string, tr *tar.Reader) ([]VulnIssue, error) {
+	var issues []VulnIssue
+	var err error
 
-	initializeSeenMap()
+	tracker := NewFileTracker()
 
 	// Check if the file has already been seen
-	if seen[fileName] {
+	if tracker.IsFileSeen(fileName) {
 		return nil, fmt.Errorf("we have seen %s already", fileName)
 	}
 
@@ -46,39 +30,41 @@ func HandleDependencyFile(fileName string, tr *tar.Reader) ([]VulnIssue, error) 
 	}
 	content := buf.Bytes()
 
-	markFileAsSeen(fileName) // Mark the file as seen
+	tracker.MarkFileAsSeen(fileName) // Mark the file as seen
 
 	switch {
 	case strings.HasSuffix(fileName, "package-lock.json"):
-		if err := handlePackageLockJSON(fileName, &content); err != nil {
+		if issues, err = handlePackageLockJSON(fileName, &content); err != nil {
 			return nil, err
 		}
 	case strings.HasSuffix(fileName, "Gemfile.lock"):
-		if err := handleGemLockfile(fileName, &content); err != nil {
+		if issues, err = handleGemLockfile(fileName, &content); err != nil {
 			return nil, err
 		}
 	case strings.HasSuffix(fileName, "yarn.lock"):
-		if err := handleYarnLockDependencies(fileName, &content); err != nil {
+		if issues, err = handleYarnLockDependencies(fileName, &content); err != nil {
 			return nil, err
 		}
 	default:
 		return nil, fmt.Errorf("unsupported dependency file type: %s", fileName)
 	}
 
+	tracker.ClearSeenMap()
 	return issues, nil
 }
 
 // handlePackageLockJSON processes a package-lock.json file to check for vulnerabilities and dependency confusion
-func handlePackageLockJSON(fileName string, content *[]byte) error {
+func handlePackageLockJSON(fileName string, content *[]byte) ([]VulnIssue, error) {
+	var issues []VulnIssue
 	if strings.Contains(fileName, "node_modules") {
-		return fmt.Errorf("skipping package-lock.json file in node_modules: %s", fileName)
+		return nil, fmt.Errorf("skipping package-lock.json file in node_modules: %s", fileName)
 	}
 
 	log.Printf("Processing: %s", fileName)
 
 	var data map[string]interface{}
 	if err := json.Unmarshal(*content, &data); err != nil {
-		return fmt.Errorf("failed to parse %s: %v", fileName, err)
+		return nil, fmt.Errorf("failed to parse %s: %v", fileName, err)
 	}
 
 	dependencies := extractPackageLockDependencies(data)
@@ -88,33 +74,37 @@ func handlePackageLockJSON(fileName string, content *[]byte) error {
 	var allErrors []error // Collect all errors
 
 	for _, dep := range dependencies {
-		err := checkDependencyVulnerabilities(dep, fileName, "npm")
+		vissue, err := checkDependencyVulnerabilities(dep, fileName, "npm")
 		if err != nil {
 			// Log the error and continue with the next dependency
 			allErrors = append(allErrors, err)
 			continue // Skip to the next dependency
 		}
 
-		err = checkNPMDependencyConfusion(dep)
+		cissue, err := checkNPMDependencyConfusion(dep)
 		if err != nil {
 			// Log the error and continue with the next dependency
 			allErrors = append(allErrors, err)
 			continue // Skip to the next dependency
 		}
+
+		issues = append(issues, vissue...)
+		issues = append(issues, cissue...)
 	}
 
 	// After the loop, you can handle the collected errors if needed
 	if len(allErrors) > 0 {
 		// You could return a summary of errors or handle them as needed
-		return fmt.Errorf("encountered errors while processing dependencies: %v", allErrors)
+		return nil, fmt.Errorf("encountered errors while processing dependencies: %v", allErrors)
 	}
 
-	return nil
+	return issues, nil
 }
 
-func handleYarnLockDependencies(fileName string, content *[]byte) error {
+func handleYarnLockDependencies(fileName string, content *[]byte) ([]VulnIssue, error) {
+	var issues []VulnIssue
 	if strings.Contains(fileName, "node_modules") {
-		return fmt.Errorf("skipping yarn.lock file in node_modules: %s", fileName)
+		return nil, fmt.Errorf("skipping yarn.lock file in node_modules: %s", fileName)
 	}
 
 	log.Printf("Processing: %s", fileName)
@@ -124,21 +114,25 @@ func handleYarnLockDependencies(fileName string, content *[]byte) error {
 
 	// Check each dependency for vulnerabilities and dependency confusion
 	for _, dep := range dependencies {
-		err := checkDependencyVulnerabilities(dep, fileName, "npm")
+		vissue, err := checkDependencyVulnerabilities(dep, fileName, "npm")
 		if err != nil {
-			return err
+			return nil, err
 		}
-		err = checkNPMDependencyConfusion(dep)
+		cissue, err := checkNPMDependencyConfusion(dep)
 		if err != nil {
-			return err
+			return nil, err
 		}
+
+		issues = append(issues, vissue...)
+		issues = append(issues, cissue...)
 	}
 
-	return nil
+	return issues, nil
 }
 
 // handleGemLockfile processes a Gemfile.lock to check for vulnerabilities and dependency confusion.
-func handleGemLockfile(fileName string, content *[]byte) error {
+func handleGemLockfile(fileName string, content *[]byte) ([]VulnIssue, error) {
+	var issues []VulnIssue
 	log.Printf("Handling Gemfile.lock: %s", fileName)
 
 	dependencies := rubyaudit.ExtractGemfileLockDependenciesRaw(content)
@@ -146,12 +140,19 @@ func handleGemLockfile(fileName string, content *[]byte) error {
 
 	// Check each dependency for vulnerabilities and dependency confusion.
 	for _, dep := range dependencies {
-		err := checkGemDependencyVulnerabilities(dep, fileName)
+		vissue, err := checkGemDependencyVulnerabilities(dep, fileName)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		checkGemDependencyConfusion(dep)
+
+		cissue, err := checkGemDependencyConfusion(dep)
+		if err != nil {
+			return nil, err
+		}
+
+		issues = append(issues, vissue...)
+		issues = append(issues, cissue...)
 	}
 
-	return nil
+	return issues, nil
 }

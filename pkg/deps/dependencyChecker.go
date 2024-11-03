@@ -11,7 +11,8 @@ import (
 )
 
 // checkNPMDependencyVulnerabilities checks for known vulnerabilities in an NPM dependency
-func checkDependencyVulnerabilities(dep Dependency, filename string, env string) error {
+func checkDependencyVulnerabilities(dep Dependency, filename string, env string) ([]VulnIssue, error) {
+	var issues []VulnIssue
 	// Clean the version string
 	cleanedVersion := cleanVersion(dep)
 
@@ -25,21 +26,21 @@ func checkDependencyVulnerabilities(dep Dependency, filename string, env string)
 	resp, err := http.Get(apiURL)
 	if err != nil {
 		log.Printf("Failed to fetch vulnerabilities for %s@%s: %v", dep.Name, dep.Version, err)
-		return err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	// Check if the response status is not 200 (OK)
 	if resp.StatusCode != http.StatusOK {
 		log.Printf("Failed to fetch vulnerabilities for %s@%s: HTTP status %d", dep.Name, dep.Version, resp.StatusCode)
-		return fmt.Errorf("HTTP status %d for %s@%s", resp.StatusCode, dep.Name, dep.Version)
+		return nil, fmt.Errorf("HTTP status %d for %s@%s", resp.StatusCode, dep.Name, dep.Version)
 	}
 
 	var response Response
 
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
 		log.Printf("Failed to parse vulnerabilities for %s@%s: %v", dep.Name, dep.Version, err)
-		return err
+		return nil, err
 	}
 
 	// Log the found vulnerabilities
@@ -51,49 +52,54 @@ func checkDependencyVulnerabilities(dep Dependency, filename string, env string)
 				log.Printf("Failed to fetch details for advisory %s: %v", advisory.ID, err)
 				continue
 			}
-			addDepenDencyIssueDetails(details, filename, dep, "NPM")
+			issue := addDepenDencyIssueDetails(details, filename, dep, "NPM")
+			issues = append(issues, issue)
 		}
 	}
 
-	return nil
+	return issues, nil
 }
 
 // checkNPMDependencyConfusion checks for potential dependency confusion for an NPM dependency
-func checkNPMDependencyConfusion(dep Dependency) error {
+func checkNPMDependencyConfusion(dep Dependency) ([]VulnIssue, error) {
+	var issues []VulnIssue
 	// Query the public NPM registry to get information about the package
 	apiURL := fmt.Sprintf("https://registry.npmjs.org/%s", url.PathEscape(dep.Name))
 
 	resp, err := http.Get(apiURL)
 	if err != nil {
 		log.Printf("Failed to fetch package info for %s: %v", dep.Name, err)
-		return err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	// Check if the response status is 404 (Not Found) indicating the package does not exist on NPM
 	if resp.StatusCode == http.StatusNotFound {
 		log.Printf("Package %s does not exist on the public NPM registry.", dep.Name)
-		addDepenDencyIssueDetails(dep.Name, apiURL, dep, "NPM")
-		return nil
+		issue := addDepenDencyIssueDetails(dep.Name, apiURL, dep, "NPM")
+		issues = append(issues, issue)
 	}
 
-	return nil
+	return issues, nil
 }
 
 // checkGemDependencyVulnerabilities checks for known vulnerabilities in a Gem dependency.
-func checkGemDependencyVulnerabilities(dep rubyaudit.Dependency, filename string) error {
+func checkGemDependencyVulnerabilities(dep rubyaudit.Dependency, filename string) ([]VulnIssue, error) {
+	var issues []VulnIssue
 	result, err := rubyaudit.SearchAdvisories(dep.Name, dep.Version)
 	if err != nil {
 		log.Printf("Error searching advisories: %v, %s:%s", err, dep.Name, dep.Version)
-		return err
+		return nil, err
 	}
 
-	addDepenDencyIssueDetails(result, filename, dep, "GEM")
-	return nil
+	issue := addDepenDencyIssueDetails(result, filename, dep, "GEM")
+	issues = append(issues, issue)
+	return issues, nil
 }
 
 // checkGemDependencyConfusion checks for potential dependency confusion for a Gem dependency.
-func checkGemDependencyConfusion(dep rubyaudit.Dependency) error {
+func checkGemDependencyConfusion(dep rubyaudit.Dependency) ([]VulnIssue, error) {
+	var issues []VulnIssue
 	log.Printf("Checking dependency confusion for Gem dependency: %s@%s", dep.Name, dep.Version)
 
 	apiURL := fmt.Sprintf("https://rubygems.org/gems/%s", dep.Name)
@@ -102,15 +108,15 @@ func checkGemDependencyConfusion(dep rubyaudit.Dependency) error {
 	resp, err := http.Get(apiURL)
 	if err != nil {
 		log.Printf("Failed to fetch package info for %s: %v", dep.Name, err)
-		return err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	// Check if the response status is 404 (Not Found) indicating the package does not exist on NPM
 	if resp.StatusCode == http.StatusNotFound {
 		log.Printf("Package %s does not exist on the public NPM registry.", dep.Name)
-		addDepenDencyIssueDetails(dep.Name, apiURL, dep, "NPM")
-		return nil
+		issue := addDepenDencyIssueDetails(dep.Name, apiURL, dep, "NPM")
+		issues = append(issues, issue)
 	}
-	return nil
+	return issues, nil
 }

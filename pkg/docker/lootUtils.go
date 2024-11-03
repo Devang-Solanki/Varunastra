@@ -20,13 +20,6 @@ var (
 	scans config.ScanMap
 )
 
-type ScanWorker struct {
-	scanMap   map[string]bool
-	regexDB   []config.RegexDB
-	output    *FinalOutput
-	imageName string
-}
-
 // ProcessImage scans a Docker image for vulnerabilities.
 func ProcessImage(imageName string, scanMap map[string]bool, regexDB []config.RegexDB, excludedPatterns config.ExcludedPatterns, allTagsScan bool) ([]FinalOutput, error) {
 	scans = scanMap
