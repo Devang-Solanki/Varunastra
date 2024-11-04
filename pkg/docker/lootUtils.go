@@ -113,13 +113,14 @@ func scanImageTag(taggedImage string, img v1.Image, scanMap map[string]bool, reg
 // launchWorkerPool starts a pool of workers to scan layers and environment history concurrently.
 func launchWorkerPool(img v1.Image, name string, excludedPatterns config.ExcludedPatterns, scanMap map[string]bool, regexDB []config.RegexDB, output *FinalOutput) []error {
 	var wg sync.WaitGroup
+	var assets = &Assets{}
 	errorCh := make(chan error, 2)
 	taskChannel := make(chan SecretScanTask, 1000)
 
 	var workerwg sync.WaitGroup
 	for i := 0; i < workerCount; i++ {
 		workerwg.Add(1)
-		go worker(&workerwg, output, scanMap, regexDB, taskChannel)
+		go worker(&workerwg, output, scanMap, regexDB, taskChannel, assets)
 	}
 
 	wg.Add(1)
@@ -143,6 +144,11 @@ func launchWorkerPool(img v1.Image, name string, excludedPatterns config.Exclude
 
 	close(taskChannel)
 	workerwg.Wait()
+
+	// Make all domains and URLs unique
+	assets.MakeUniqueDomains()
+	assets.MakeUniqueUrls()
+	output.Assets = *assets
 
 	var errs []error
 	for err := range errorCh {
