@@ -24,8 +24,6 @@ var (
 func ProcessImage(imageName string, scanMap map[string]bool, regexDB []config.RegexDB, excludedPatterns config.ExcludedPatterns, allTagsScan bool) ([]FinalOutput, error) {
 	scans = scanMap
 	var combinedOutput []FinalOutput
-	log.Println("Starting Scan for Image:", imageName)
-
 	isLocalFile := strings.HasSuffix(imageName, ".tar")
 
 	var _ v1.Image
@@ -62,7 +60,17 @@ func processImage(imageName string, scanMap map[string]bool, regexDB []config.Re
 	}
 
 	for _, tag := range tags {
-		taggedImage := fmt.Sprintf("%s:%s", strings.Split(imageName, ":")[0], tag)
+		var taggedImage string
+		if len(strings.Split(imageName, ":")) == 2 {
+			if strings.Split(imageName, ":")[1] == tag {
+				taggedImage = fmt.Sprintf("%s:%s", strings.Split(imageName, ":")[0], tag)
+			} else {
+				continue
+			}
+		} else {
+			taggedImage = fmt.Sprintf("%s:%s", strings.Split(imageName, ":")[0], tag)
+
+		}
 		ref, err := name.ParseReference(taggedImage)
 		if err != nil {
 			return []FinalOutput{}, fmt.Errorf("failed to parse image reference %s: %v", taggedImage, err)
@@ -92,7 +100,7 @@ func processImage(imageName string, scanMap map[string]bool, regexDB []config.Re
 
 // scanImageTag scans a specific image tag for vulnerabilities.
 func scanImageTag(taggedImage string, img v1.Image, scanMap map[string]bool, regexDB []config.RegexDB, excludedPatterns config.ExcludedPatterns) (FinalOutput, error) {
-
+	log.Println("Starting Scan for Tag:", taggedImage)
 	output := FinalOutput{Target: taggedImage}
 	errs := launchWorkerPool(img, taggedImage, excludedPatterns, scanMap, regexDB, &output)
 	if len(errs) > 0 {

@@ -29,11 +29,11 @@ func worker(wg *sync.WaitGroup, output *FinalOutput, scanMap config.ScanMap, reg
 		}
 	}
 
+	output.Secrets = append(output.Secrets, secrets...)
+
 	// Make all domains and URLs unique
 	assets.MakeUniqueDomains()
 	assets.MakeUniqueUrls()
-
-	output.Secrets = append(output.Secrets, secrets...)
 	output.Assets = assets
 }
 
