@@ -90,6 +90,8 @@ func processImage(imageName string, scanMap map[string]bool, regexDB []config.Re
 		if err != nil {
 			return nil, err
 		}
+
+		RemoveDuplicates(&output.Secrets)
 		combinedOutput = append(combinedOutput, output)
 		if !allTagsScan {
 			break

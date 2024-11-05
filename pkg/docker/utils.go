@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"reflect"
@@ -107,13 +107,17 @@ func GetSubdomainsAndDomains(content string) []SubAndDom {
 
 // fetchTagsFromRegistry fetches available tags for an image from the specified Docker registry
 func fetchTagsFromRegistry(imageName string, registry name.Registry) ([]string, error) {
-	repo := strings.Split(imageName, ":")[0]
-	repoParts := strings.Split(repo, "/")
 
 	// Determine the registry URL and formulate the API URL
 	var apiURL string
 	switch registry.Name() {
 	case "index.docker.io":
+		if strings.HasPrefix(imageName, "index.docker.io/") {
+			registryPrefix := "index.docker.io/"
+			imageName = strings.TrimPrefix(imageName, registryPrefix)
+		}
+		repo := strings.Split(imageName, ":")[0]
+		repoParts := strings.Split(repo, "/")
 		if len(repoParts) == 1 {
 			// For official Docker Hub images
 			apiURL = fmt.Sprintf("https://registry.hub.docker.com/v2/repositories/library/%s/tags", repo)
@@ -123,23 +127,27 @@ func fetchTagsFromRegistry(imageName string, registry name.Registry) ([]string, 
 		}
 	case "ghcr.io":
 		// For GitHub Container Registry images
-		apiURL = fmt.Sprintf("https://ghcr.io/v2/%s/tags/list", repo)
+		// apiURL = fmt.Sprintf("https://ghcr.io/v2/%s/tags/list", repo)
 	case "gcr.io":
 		// For Google Container Registry images
-		apiURL = fmt.Sprintf("https://gcr.io/v2/%s/tags/list", repo)
-	case "aws":
+		// apiURL = fmt.Sprintf("https://gcr.io/v2/%s/tags/list", repo)
+	case "public.ecr.aws":
+		if strings.HasPrefix(imageName, "public.ecr.aws/") {
+			// Check for 'public.ecr.aws' registry
+			registryPrefix := "public.ecr.aws/"
+			imageName = strings.TrimPrefix(imageName, registryPrefix)
+		}
 		// For Amazon ECR images, the API requires a different endpoint
-		awsRegion := "us-west-2" // Set your desired AWS region here
-		apiURL = fmt.Sprintf("https://%s.dkr.ecr.%s.amazonaws.com/v2/%s/tags/list", repoParts[0], awsRegion, repoParts[1])
+		apiURL = fmt.Sprintf("https://public.ecr.aws/v2/%s/tags/list", imageName)
 	default:
 		return nil, fmt.Errorf("unsupported registry: %s", registry)
 	}
 
 	// Get the token if needed (for GCR and AWS ECR)
-	// token, err := getAuthToken(registry.Name())
-	// if err != nil {
-	// 	return nil, err
-	// }
+	token, err := getAuthToken(registry.Name())
+	if err != nil {
+		return nil, err
+	}
 
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", apiURL, nil)
@@ -147,9 +155,9 @@ func fetchTagsFromRegistry(imageName string, registry name.Registry) ([]string, 
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	// if token != "" {
-	// 	req.Header.Set("Authorization", "Bearer "+token)
-	// }
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -161,20 +169,19 @@ func fetchTagsFromRegistry(imageName string, registry name.Registry) ([]string, 
 		return nil, fmt.Errorf("failed to fetch tags: received status %s", resp.Status)
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
-	}
-
-	var tagsResponse struct {
-		Results []struct {
-			Name string `json:"name"`
-		} `json:"results"`
 	}
 
 	// Parse response based on the registry
 	switch registry.Name() {
 	case "index.docker.io":
+		var tagsResponse struct {
+			Results []struct {
+				Name string `json:"name"`
+			} `json:"results"`
+		}
 		if err := json.Unmarshal(body, &tagsResponse); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 		}
@@ -201,15 +208,19 @@ func fetchTagsFromRegistry(imageName string, registry name.Registry) ([]string, 
 			return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 		}
 		return gcrTagsResponse.Tags, nil
-	case "aws":
+	case "public.ecr.aws":
 		// Parse the Amazon ECR response
-		var ecrTagsResponse struct {
+
+		// TagResponse represents the structure of the response for image tags.
+		var tagResponse struct {
+			Name string   `json:"name"`
 			Tags []string `json:"tags"`
 		}
-		if err := json.Unmarshal(body, &ecrTagsResponse); err != nil {
+
+		if err := json.Unmarshal(body, &tagResponse); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 		}
-		return ecrTagsResponse.Tags, nil
+		return tagResponse.Tags, nil
 	}
 
 	return nil, fmt.Errorf("unsupported registry: %s", registry)
@@ -226,11 +237,23 @@ func getAuthToken(registry string) (string, error) {
 		}
 		token, _ := ts.Token()
 		return token.AccessToken, nil
-	case "aws":
+	case "public.ecr.aws":
 		// Implement AWS ECR token retrieval
 		// You would typically use the AWS SDK to get an ECR authorization token here
 		// This is a placeholder; replace with actual implementation.
-		return "", fmt.Errorf("AWS ECR token retrieval not implemented")
+		var token string
+
+		resp, httpErr := http.Get("https://public.ecr.aws/token")
+		defer resp.Body.Close()
+
+		if httpErr == nil && resp.StatusCode == 200 {
+			var result map[string]string
+			_ = json.NewDecoder(resp.Body).Decode(&result)
+			token = result["token"]
+		} else {
+			return "", fmt.Errorf("failed to retrive token for aws")
+		}
+		return token, nil
 	}
 	return "", nil
 }
@@ -276,6 +299,30 @@ func checkDupEntry(secret, typestr string, path string, finalResult []SecretIssu
 		}
 	}
 	return false
+}
+
+// RemoveDuplicates modifies the slice directly by removing duplicates.
+func RemoveDuplicates(issues *[]SecretIssue) {
+	// Create a map to keep track of unique entries
+	uniqueMap := make(map[string]SecretIssue)
+
+	// Create a new slice to hold the unique issues
+	var uniqueIssues []SecretIssue
+
+	// Loop through the slice and store unique SecretIssue entries in the map
+	for _, issue := range *issues {
+		// Create a key based on Type, Secret, and Path (you can adjust this as necessary)
+		key := fmt.Sprintf("%s|%s", issue.Secret, issue.Path)
+
+		// If the key doesn't exist in the map, add it
+		if _, exists := uniqueMap[key]; !exists {
+			uniqueMap[key] = issue
+			uniqueIssues = append(uniqueIssues, issue) // Append to the new slice
+		}
+	}
+
+	// Replace the original slice with the unique entries
+	*issues = uniqueIssues
 }
 
 // secretScanner scans the content for secrets and returns any issues found

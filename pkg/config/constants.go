@@ -38,9 +38,9 @@ type BlacklistedPattern struct {
 
 // CLI struct defines command-line options and subcommands
 type CLI struct {
-	Target string `kong:"required,help='Target string'"`                      // Target to scan
-	Scans  string `kong:"help='Comma-separated scans (secrets,vuln,assets)'"` // Scans to perform
-	All    bool   `kong:"help='Enable scanning for all tags'"`
+	Target string `kong:"required,help='Target repos'"`                                                                            // Target to scan
+	Scans  string `kong:"help='Comma-separated scans (secrets,vuln,assets). By default all scans are true if not specified any.'"` // Scans to perform
+	All    bool   `kong:"help='Enable scanning for all tags.'"`
 	Output string `kong:"help='Save JSON output to a file'"`
 }
 
