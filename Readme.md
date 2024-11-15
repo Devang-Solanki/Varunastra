@@ -61,7 +61,7 @@ chmod +x /path/to/varunastra
 
 ### Usage
 
-```bash
+```
 Usage: varunastra --target=STRING [flags]
 
 Varunastra is a tool designed to detect and assist in mitigating vulnerabilities within Docker images.
