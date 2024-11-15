@@ -72,6 +72,8 @@ Varunastra is a tool designed to detect and assist in mitigating vulnerabilities
 
 If no tag is specified in the repository URL, the tool will automatically choose a tag from the available options for scanning.
 
+Note: Domains are resolved via DNS queries, while URLs are extracted using regular expressions without resolution.
+
 Flags:
   -h, --help             Show context-sensitive help.
       --target=STRING    Target repos

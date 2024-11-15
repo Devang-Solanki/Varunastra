@@ -69,8 +69,8 @@ func processImage(imageName string, scanMap map[string]bool, regexDB []config.Re
 			}
 		} else {
 			taggedImage = fmt.Sprintf("%s:%s", strings.Split(imageName, ":")[0], tag)
-
 		}
+
 		ref, err := name.ParseReference(taggedImage)
 		if err != nil {
 			return []FinalOutput{}, fmt.Errorf("failed to parse image reference %s: %v", taggedImage, err)

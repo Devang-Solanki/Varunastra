@@ -6,16 +6,18 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"reflect"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/Devang-Solanki/Varunastra/pkg/config"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/weppos/publicsuffix-go/publicsuffix"
-	"google.golang.org/api/idtoken"
+	"golang.org/x/exp/rand"
 	"mvdan.cc/xurls/v2"
 )
 
@@ -92,7 +94,10 @@ func GetSubdomainsAndDomains(content string) []SubAndDom {
 		subdomain = strings.ToLower(subdomain)
 
 		if domain != "" && subdomain != domain {
-			domainMap[domain] = append(domainMap[domain], subdomain)
+			// Check if the domain resolves successfully with custom DNS resolvers
+			if resolveDomain(domain) {
+				domainMap[domain] = append(domainMap[domain], subdomain)
+			}
 		}
 	}
 
@@ -103,6 +108,31 @@ func GetSubdomainsAndDomains(content string) []SubAndDom {
 	}
 
 	return filteredDomains
+}
+
+// Function to resolve a domain using custom resolvers
+func resolveDomain(domain string) bool {
+	// Seed the random number generator
+	rand.Seed(uint64(time.Now().UnixNano()))
+
+	// Pick a random resolver from the list
+	randomResolver := resolvers[rand.Intn(len(resolvers))]
+
+	// Set up a custom DNS resolver using the selected DNS server
+	dnsResolver := &net.Resolver{
+		PreferGo: true, // Use Go's built-in DNS resolver first (can be set to false to prioritize system DNS)
+		Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+			return net.Dial("udp", randomResolver+":53")
+		},
+	}
+
+	// Perform the DNS lookup
+	_, err := dnsResolver.LookupHost(context.Background(), domain)
+	if err == nil {
+		return true
+	}
+
+	return false
 }
 
 // fetchTagsFromRegistry fetches available tags for an image from the specified Docker registry
@@ -127,10 +157,24 @@ func fetchTagsFromRegistry(imageName string, registry name.Registry) ([]string, 
 		}
 	case "ghcr.io":
 		// For GitHub Container Registry images
-		// apiURL = fmt.Sprintf("https://ghcr.io/v2/%s/tags/list", repo)
+		if strings.HasPrefix(imageName, "ghcr.io/") {
+			// Check for 'public.ecr.aws' registry
+			registryPrefix := "ghcr.io/"
+			imageName = strings.TrimPrefix(imageName, registryPrefix)
+		}
+
+		apiURL = fmt.Sprintf("https://ghcr.io/v2/%s/tags/list", imageName)
 	case "gcr.io":
 		// For Google Container Registry images
 		// apiURL = fmt.Sprintf("https://gcr.io/v2/%s/tags/list", repo)
+		if strings.HasPrefix(imageName, "gcr.io/") {
+			// Check for 'public.ecr.aws' registry
+			registryPrefix := "gcr.io/"
+			imageName = strings.TrimPrefix(imageName, registryPrefix)
+		}
+
+		apiURL = fmt.Sprintf("https://gcr.io/v2/%s/tags/list", imageName)
+
 	case "public.ecr.aws":
 		if strings.HasPrefix(imageName, "public.ecr.aws/") {
 			// Check for 'public.ecr.aws' registry
@@ -144,7 +188,7 @@ func fetchTagsFromRegistry(imageName string, registry name.Registry) ([]string, 
 	}
 
 	// Get the token if needed (for GCR and AWS ECR)
-	token, err := getAuthToken(registry.Name())
+	token, err := getAuthToken(registry.Name(), imageName)
 	if err != nil {
 		return nil, err
 	}
@@ -193,17 +237,27 @@ func fetchTagsFromRegistry(imageName string, registry name.Registry) ([]string, 
 	case "ghcr.io":
 		// Parse the GitHub Container Registry response
 		var ghTagsResponse struct {
+			Name string   `json:"name"`
 			Tags []string `json:"tags"`
 		}
+
 		if err := json.Unmarshal(body, &ghTagsResponse); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 		}
 		return ghTagsResponse.Tags, nil
 	case "gcr.io":
 		// Parse the Google Container Registry response
+
 		var gcrTagsResponse struct {
+			Name string   `json:"name"`
 			Tags []string `json:"tags"`
 		}
+
+		err := json.Unmarshal(body, &gcrTagsResponse)
+		if err != nil {
+			log.Fatalf("Error unmarshalling JSON: %v", err)
+		}
+
 		if err := json.Unmarshal(body, &gcrTagsResponse); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 		}
@@ -227,16 +281,40 @@ func fetchTagsFromRegistry(imageName string, registry name.Registry) ([]string, 
 }
 
 // getAuthToken retrieves an authentication token for the specified registry
-func getAuthToken(registry string) (string, error) {
+func getAuthToken(registry string, imageName string) (string, error) {
 	switch registry {
 	case "gcr.io":
-		// Use Google Cloud Platform's ID Token for GCR
-		ts, err := idtoken.NewTokenSource(context.Background(), "https://gcr.io")
-		if err != nil {
-			return "", fmt.Errorf("failed to get GCR token: %w", err)
+		var token string
+
+		tokenUrl := fmt.Sprintf("https://gcr.io/v2/token?scope=repository:%s:pull", imageName)
+
+		resp, httpErr := http.Get(tokenUrl)
+		defer resp.Body.Close()
+
+		if httpErr == nil && resp.StatusCode == 200 {
+			var result map[string]string
+			_ = json.NewDecoder(resp.Body).Decode(&result)
+			token = result["token"]
+		} else {
+			return "", fmt.Errorf("failed to retrive token for gcr.io")
 		}
-		token, _ := ts.Token()
-		return token.AccessToken, nil
+		return token, nil
+	case "ghcr.io":
+		var token string
+
+		tokenUrl := fmt.Sprintf("https://ghcr.io/token?service=ghcr.io&scope=repository:%s:pull", imageName)
+
+		resp, httpErr := http.Get(tokenUrl)
+		defer resp.Body.Close()
+
+		if httpErr == nil && resp.StatusCode == 200 {
+			var result map[string]string
+			_ = json.NewDecoder(resp.Body).Decode(&result)
+			token = result["token"]
+		} else {
+			return "", fmt.Errorf("failed to retrive token for ghcr.io")
+		}
+		return token, nil
 	case "public.ecr.aws":
 		// Implement AWS ECR token retrieval
 		// You would typically use the AWS SDK to get an ECR authorization token here

@@ -9,6 +9,7 @@ require (
 	github.com/alecthomas/kong v1.2.1
 	github.com/google/go-containerregistry v0.20.2
 	github.com/weppos/publicsuffix-go v0.40.2
+	golang.org/x/exp v0.0.0-20190121172915-509febef88a4
 	google.golang.org/api v0.204.0
 	gopkg.in/yaml.v2 v2.4.0
 	mvdan.cc/xurls/v2 v2.5.0
