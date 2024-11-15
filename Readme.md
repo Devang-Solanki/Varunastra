@@ -32,6 +32,14 @@ Introducing Varunastra, an innovative tool designed to enhance the security of D
 | Javascript | package-lock.json   |
 |            | yarn.lock           |
 
+**Supported Registry**
+| Registry       | Scopes |
+|----------------|--------|
+| DockerHub      | Public |
+| AWS ECR        | Public |
+| Google GCR     | Public |
+| Github GHCR    | Public |
+
 
 ### Installation Guide for Varunastra
 
