@@ -64,11 +64,19 @@ chmod +x /path/to/varunastra
 ```bash
 Usage: varunastra --target=STRING [flags]
 
+Varunastra is a tool designed to detect and assist in mitigating vulnerabilities within Docker images.
+
+- For images hosted on Docker Hub, simply provide the repository name (e.g., `datadog/agent`).
+
+- For images from AWS or GCP, include the full registry URL (e.g., `public.ecr.aws/hashicorp/vault`).
+
+If no tag is specified in the repository URL, the tool will automatically choose a tag from the available options for scanning.
+
 Flags:
   -h, --help             Show context-sensitive help.
-      --target=STRING    Target string
-      --scans=STRING     Comma-separated scans (secrets,vuln,assets)
-      --all              Enable scanning for all tags
+      --target=STRING    Target repos
+      --scans=STRING     Comma-separated scans (secrets,vuln,assets). By default all scans are true if not specified any.
+      --all              Enable scanning for all tags.
       --output=STRING    Save JSON output to a file
 ```
 
