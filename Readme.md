@@ -24,6 +24,7 @@ Introducing Varunastra, an innovative tool designed to enhance the security of D
 - **Asset Extraction:** Retrieves assets such as domain/subdomains and urls from Docker images for bug bounty hunters.
 - **Customizable Solution:** Define regex patterns and blacklists to meet specific needs.
 - **Dependency Checks:** Automates assessments for quicker threat identification.
+- **SAST Scans:** This is on hold due to some licensing issues.
 
 **Supported Lock Files**
 | Language   | File                |
