@@ -15,7 +15,6 @@ func HandleOutput(data []byte, cli CLI) {
 			log.Fatalln("Error:", err)
 		}
 	}
-
 }
 
 func writeOutputToFile(cli CLI, output []byte) error {

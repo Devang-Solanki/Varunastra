@@ -2,6 +2,8 @@ package config
 
 import (
 	"regexp"
+
+	"github.com/Devang-Solanki/Varunastra/pkg/deps"
 )
 
 // Constants for configuration and limits
@@ -38,21 +40,48 @@ type BlacklistedPattern struct {
 
 // CLI struct defines command-line options and subcommands
 type CLI struct {
-	Target string `kong:"required,help='Target repos'"`                                                                            // Target to scan
-	Scans  string `kong:"help='Comma-separated scans (secrets,vuln,assets). By default all scans are true if not specified any.'"` // Scans to perform
+	Target string `kong:"required,help='Target repos'"`                                                                      // Target to scan
+	Scans  string `kong:"help='Comma-separated scans (secrets,vuln,assets). By default all are true if not specified any.'"` // Scans to perform
 	All    bool   `kong:"help='Enable scanning for all tags.'"`
 	Output string `kong:"help='Save JSON output to a file'"`
+	Html   string `kong:"help='Save HTML report to a file'"`
 }
 
 // RegexConfig defines a map for regex patterns
 type RegexConfig map[string]string
+
+type SubAndDom struct {
+	Subdomains []string `json:"subdomains"`
+	Domain     string   `json:"domain"`
+}
+
+// FinalOutput represents the final results of the scan
+type FinalOutput struct {
+	Target        string           `json:"target"`          // Target scanned
+	Secrets       []SecretIssue    `json:"secrets"`         // Found secrets
+	Vulnerability []deps.VulnIssue `json:"vulnerabilities"` // Found vulnerabilities
+	Assets        Assets           `json:"assets"`
+}
+
+type Assets struct {
+	Domains []SubAndDom `json:"assets"`
+	Urls    []string    `json:"urls"`
+}
+
+// SecretIssue represents an identified secret issue
+type SecretIssue struct {
+	Issue  string `json:"issue"`  // Description of the issue
+	Path   string `json:"asset"`  // Path where the issue was found
+	Type   string `json:"type"`   // Type of the secret
+	Secret string `json:"secret"` // The secret itself
+}
+
+// ExcludedPatterns is a custom type for a slice of regex patterns
+type ExcludedPatterns []*regexp.Regexp
+type ScanMap map[string]bool
 
 // RegexDB holds a compiled regex pattern
 type RegexDB struct {
 	ID      string         // Identifier for the regex
 	Pattern *regexp.Regexp // Compiled regex pattern
 }
-
-// ExcludedPatterns is a custom type for a slice of regex patterns
-type ExcludedPatterns []*regexp.Regexp
-type ScanMap map[string]bool

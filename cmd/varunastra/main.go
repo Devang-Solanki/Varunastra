@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"html/template"
 	"log"
 	"os"
 	"strings"
@@ -33,6 +34,28 @@ func handleScan(cli config.CLI, regexDB []config.RegexDB, excludedPatterns confi
 	data, _ := json.MarshalIndent(output, "", "  ")
 	config.HandleOutput(data, cli)
 
+	if cli.Html != "" {
+		log.Println("Generating Report")
+		// Step 3: Parse and execute the template with the parsed data
+		t, err := template.New("scanReport").Parse(tmpl)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		// Output to an HTML file (can be stdout or a file)
+		file, err := os.Create(cli.Html)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer file.Close()
+
+		err = t.Execute(file, output)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		log.Println("HTML report generated successfully as,", cli.Html)
+	}
 }
 
 func main() {
