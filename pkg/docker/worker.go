@@ -33,6 +33,7 @@ func worker(wg *sync.WaitGroup, output *FinalOutput, scanMap config.ScanMap, reg
 }
 
 func queueTask(path string, content *[]byte, id interface{}, imageName string, taskChannel chan<- SecretScanTask) {
+
 	task := SecretScanTask{
 		Path:      path,
 		Content:   content,

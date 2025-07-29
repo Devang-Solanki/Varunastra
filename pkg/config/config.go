@@ -8,8 +8,9 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
+
+	regexp "github.com/wasilibs/go-re2"
 
 	"gopkg.in/yaml.v2"
 )
@@ -91,12 +92,12 @@ func CreateScanMap(cliScans string) ScanMap {
 	return scanMap
 }
 
-func LoadConfig() ([]RegexDB, ExcludedPatterns, error) {
+func LoadConfig() ([]RegexDB, ExcludedPatterns, WhitelistedPatterns, error) {
 	log.Printf("Checking if config file exist")
 	// Get the home directory
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	// Define the full path to the config directory
@@ -105,7 +106,7 @@ func LoadConfig() ([]RegexDB, ExcludedPatterns, error) {
 	// Check if the config directory exists, create it if not
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		if err := os.MkdirAll(configPath, 0755); err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 	}
 
@@ -115,25 +116,25 @@ func LoadConfig() ([]RegexDB, ExcludedPatterns, error) {
 	// Check if the config file exists, download if not
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		if err := downloadFile(configURL, configPath); err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 	}
 
 	// Read the config file
 	configData, err := os.ReadFile(configPath)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	// Parse the YAML configuration
 	var config Config
 	if err := yaml.Unmarshal(configData, &config); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	// Check if regex files path is provided
 	if config.RegexFiles.Path == "" {
-		return nil, nil, fmt.Errorf("regex_files path is not defined in config")
+		return nil, nil, nil, fmt.Errorf("regex_files path is not defined in config")
 	}
 
 	regexPath := filepath.Join(homeDir, config.RegexFiles.Path)
@@ -141,7 +142,7 @@ func LoadConfig() ([]RegexDB, ExcludedPatterns, error) {
 	// Call initRegex with the regex file path
 	regexDB, err := initRegex(regexPath)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	// Initialize regex from blacklisted_patterns
@@ -149,12 +150,22 @@ func LoadConfig() ([]RegexDB, ExcludedPatterns, error) {
 	for _, bp := range config.BlacklistedPatterns {
 		re, err := regexp.Compile(bp.Pattern)
 		if err != nil {
-			return nil, nil, fmt.Errorf("invalid regex in blacklisted_patterns %s: %v", bp.Pattern, err)
+			return nil, nil, nil, fmt.Errorf("invalid regex in blacklisted_patterns %s: %v", bp.Pattern, err)
 		}
 		excludedPatterns = append(excludedPatterns, re)
 	}
 
-	return regexDB, excludedPatterns, nil
+	// Initialize regex from whitelisted_patterns
+	var whitelistedPatterns WhitelistedPatterns
+	for _, wp := range config.WhitelistedPatterns {
+		re, err := regexp.Compile(wp.Pattern)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("invalid regex in whitelisted_patterns %s: %v", wp.Pattern, err)
+		}
+		whitelistedPatterns = append(whitelistedPatterns, re)
+	}
+
+	return regexDB, excludedPatterns, whitelistedPatterns, nil
 }
 
 func downloadFile(url, filepath string) error {

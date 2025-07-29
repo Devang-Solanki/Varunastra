@@ -1,7 +1,7 @@
 package config
 
 import (
-	"regexp"
+	regexp "github.com/wasilibs/go-re2"
 
 	"github.com/Devang-Solanki/Varunastra/pkg/deps"
 )
@@ -26,6 +26,7 @@ var (
 type Config struct {
 	RegexFiles          RegexFilesConfig     `yaml:"regex_files"`          // Nested structure for regex files          // Path to regex files
 	BlacklistedPatterns []BlacklistedPattern `yaml:"blacklisted_patterns"` // List of blacklisted paths
+	WhitelistedPatterns []WhitelistedPattern `yaml:"whitelisted_patterns"` // List of whitelisted paths
 }
 
 // New struct to represent the regex files configuration
@@ -35,6 +36,11 @@ type RegexFilesConfig struct {
 
 // Struct to represent each blacklisted pattern
 type BlacklistedPattern struct {
+	Pattern string `yaml:"pattern"` // Pattern for the blacklisted path
+}
+
+// Struct to represent each blacklisted pattern
+type WhitelistedPattern struct {
 	Pattern string `yaml:"pattern"` // Pattern for the blacklisted path
 }
 
@@ -78,6 +84,7 @@ type SecretIssue struct {
 
 // ExcludedPatterns is a custom type for a slice of regex patterns
 type ExcludedPatterns []*regexp.Regexp
+type WhitelistedPatterns []*regexp.Regexp
 type ScanMap map[string]bool
 
 // RegexDB holds a compiled regex pattern

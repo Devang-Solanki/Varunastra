@@ -1,0 +1,770 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Varunastra Scan Report</title>
+	<style>
+		:root {
+			--bg-color: #f0f4f8;
+			--card-bg: #ffffff;
+			--text-color: #2e3a59;
+			--muted-text: #6b7280;
+			--table-header: #e5eaf1;
+			--border-color: #d1d5db;
+			--accent-color: #3b82f6;
+		}
+
+		body {
+			font-family: 'Helvetica Neue', sans-serif;
+			background-color: var(--bg-color);
+			color: var(--text-color);
+			margin: 0;
+			padding: 40px 20px;
+			line-height: 1.6;
+		}
+
+		h1, h2, h3, h4 {
+			margin-top: 0;
+		}
+
+		h1 {
+			font-size: 2rem;
+			margin-bottom: 30px;
+			border-bottom: 2px solid var(--border-color);
+			padding-bottom: 10px;
+		}
+
+		.section {
+			background-color: var(--card-bg);
+			border-radius: 10px;
+			box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+			padding: 25px 30px;
+			margin-bottom: 30px;
+			transition: background-color 0.3s;
+		}
+
+		.section:hover {
+			background-color: #fdfefe;
+		}
+
+		.table {
+			width: 100%;
+			border-collapse: collapse;
+			margin-top: 10px;
+			border-radius: 6px;
+			overflow: hidden;
+		}
+
+		.table th, .table td {
+			border: 1px solid var(--border-color);
+			padding: 12px 14px;
+			text-align: left;
+		}
+
+		.table th {
+			background-color: var(--table-header);
+			color: var(--text-color);
+			font-weight: 600;
+		}
+
+		ul {
+			padding-left: 20px;
+			margin-top: 10px;
+		}
+
+		li {
+			margin-bottom: 6px;
+		}
+
+		p.empty-message {
+			color: var(--muted-text);
+			font-style: italic;
+			margin-top: 5px;
+		}
+
+		h2 {
+			color: var(--accent-color);
+			margin-bottom: 15px;
+		}
+
+		h3, h4 {
+			margin-top: 20px;
+			color: #374151;
+		}
+	</style>
+</head>
+<body>
+	<h1>Scan Results</h1>
+	
+	<div class="section">
+		<h2>Target: devangsolankii/secrets:latest</h2>
+
+		<h3>Secrets Found:</h3>
+		
+		<table class="table">
+			<tr>
+				<th>Issue</th>
+				<th>Path</th>
+				<th>Type</th>
+				<th>Secret</th>
+			</tr>
+			
+			<tr>
+				<td>Secret Leaked in Docker Layer sha256:758f280dcc0fda3ba816ff06ff816511657120ea934adb600f3493c865a470cd</td>
+				<td>app/.env</td>
+				<td>Amazon Access Key</td>
+				<td>ABIAK52LPFORPRUCRC22</td>
+			</tr>
+			
+			<tr>
+				<td>Secret Leaked in Docker Layer sha256:ad1c7cfc347f5c86fc2678b58f6a8fb6c6003471405760532fc3240b9eb1b343</td>
+				<td>etc/ImageMagick-6/mime.xml</td>
+				<td>PGP private key block</td>
+				<td>-----BEGIN PGP PRIVATE KEY BLOCK-----</td>
+			</tr>
+			
+			<tr>
+				<td>Secret Leaked in Docker History history:18</td>
+				<td>history:18</td>
+				<td>Google API Key</td>
+				<td>AIzaSy0c3965368a6b10f7640dbda46abfdca98</td>
+			</tr>
+			
+			<tr>
+				<td>Secret Leaked in Docker History history:13</td>
+				<td>history:13</td>
+				<td>Google API Key</td>
+				<td>AIzaSy0c3965368a6b10f7640dbda46abfdca98</td>
+			</tr>
+			
+		</table>
+		
+
+		<h3>Vulnerabilities Found:</h3>
+		
+		<table class="table">
+			<tr>
+				<th>Title</th>
+				<th>Issue</th>
+			</tr>
+			
+			<tr>
+				<td>Cross-site Scripting in dompurify</td>
+				<td>GHSA-63q7-h895-m982</td>
+			</tr>
+			
+			<tr>
+				<td>Cross-Site Scripting in dompurify</td>
+				<td>GHSA-chqj-j4fh-rw7m</td>
+			</tr>
+			
+			<tr>
+				<td>DOMpurify has a nesting-based mXSS</td>
+				<td>GHSA-gx9m-whjm-85jf</td>
+			</tr>
+			
+			<tr>
+				<td>Cross-Site Scripting in dompurify</td>
+				<td>GHSA-mjjq-c88q-qhr6</td>
+			</tr>
+			
+			<tr>
+				<td>DOMPurify allows tampering by prototype pollution</td>
+				<td>GHSA-mmhx-hmjr-r674</td>
+			</tr>
+			
+			<tr>
+				<td>DOMPurify vulnerable to tampering by prototype polution</td>
+				<td>GHSA-p3vf-v8qc-cwcr</td>
+			</tr>
+			
+			<tr>
+				<td>DOMPurify allows Cross-site Scripting (XSS)</td>
+				<td>GHSA-vhxf-7vqr-mrjg</td>
+			</tr>
+			
+			<tr>
+				<td>express vulnerable to XSS via response.redirect()</td>
+				<td>GHSA-qw6h-vgh9-j6wx</td>
+			</tr>
+			
+			<tr>
+				<td>Express.js Open Redirect in malformed URLs</td>
+				<td>GHSA-rv95-896h-c2vc</td>
+			</tr>
+			
+		</table>
+		
+
+		<h3>Assets:</h3>
+
+		<h4>Domains:</h4>
+		
+		<table class="table">
+			<tr>
+				<th>Domain</th>
+				<th>Subdomains</th>
+			</tr>
+			
+			<tr>
+				<td>umn.edu</td>
+				<td>boombox.micro.umn.edu<br></td>
+			</tr>
+			
+			<tr>
+				<td>bar.org</td>
+				<td>foo.bar.org<br></td>
+			</tr>
+			
+			<tr>
+				<td>mit.edu</td>
+				<td>gnu.ai.mit.edu<br></td>
+			</tr>
+			
+			<tr>
+				<td>tue.nl</td>
+				<td>win.tue.nl<br></td>
+			</tr>
+			
+			<tr>
+				<td>iana.org</td>
+				<td>www.iana.org<br></td>
+			</tr>
+			
+			<tr>
+				<td>example.com</td>
+				<td>gateway.example.com<br></td>
+			</tr>
+			
+			<tr>
+				<td>gnu.org</td>
+				<td>www.gnu.org<br></td>
+			</tr>
+			
+			<tr>
+				<td>redhuntlabs.com</td>
+				<td>reports.redhuntlabs.com<br>secure.redhuntlabs.com<br>data.redhuntlabs.com<br>portal.redhuntlabs.com<br>monitoring.redhuntlabs.com<br>analytics.redhuntlabs.com<br>internal.redhuntlabs.com<br>dev.redhuntlabs.com<br>api.redhuntlabs.com<br>admin.redhuntlabs.com<br></td>
+			</tr>
+			
+			<tr>
+				<td>some-domain-name.com</td>
+				<td>proxy1.some-domain-name.com<br>proxy2.some-domain-name.com<br></td>
+			</tr>
+			
+			<tr>
+				<td>github.io</td>
+				<td>unicode-org.github.io<br></td>
+			</tr>
+			
+			<tr>
+				<td>debian.org</td>
+				<td>aptitude.alioth.debian.org<br>lists.debian.org<br>www.debian.org<br>bugs.debian.org<br>snapshot.debian.org<br>deb.debian.org<br>salsa.debian.org<br></td>
+			</tr>
+			
+			<tr>
+				<td>red-bean.com</td>
+				<td>svnbook.red-bean.com<br></td>
+			</tr>
+			
+			<tr>
+				<td>npmjs.org</td>
+				<td>registry.npmjs.org<br></td>
+			</tr>
+			
+			<tr>
+				<td>yoyodyne.com</td>
+				<td>proxy.yoyodyne.com<br></td>
+			</tr>
+			
+			<tr>
+				<td>openpgp.org</td>
+				<td>keys.openpgp.org<br></td>
+			</tr>
+			
+			<tr>
+				<td>taler.exchange</td>
+				<td>vnd.gnu.taler.exchange<br></td>
+			</tr>
+			
+			<tr>
+				<td>wap.si</td>
+				<td>vnd.wap.si<br></td>
+			</tr>
+			
+			<tr>
+				<td>kernel.org</td>
+				<td>www.kernel.org<br></td>
+			</tr>
+			
+			<tr>
+				<td>efg2.com</td>
+				<td>www.efg2.com<br></td>
+			</tr>
+			
+			<tr>
+				<td>ubuntu.com</td>
+				<td>keyserver.ubuntu.com<br></td>
+			</tr>
+			
+			<tr>
+				<td>ctct.ws</td>
+				<td>vnd.ctct.ws<br></td>
+			</tr>
+			
+			<tr>
+				<td>mysql.com</td>
+				<td>dev.mysql.com<br></td>
+			</tr>
+			
+			<tr>
+				<td>ieee.org</td>
+				<td>standards-oui.ieee.org<br></td>
+			</tr>
+			
+			<tr>
+				<td>something.com</td>
+				<td>my.host.live.something.com<br></td>
+			</tr>
+			
+			<tr>
+				<td>sealed.net</td>
+				<td>vnd.sealed.net<br></td>
+			</tr>
+			
+			<tr>
+				<td>phaseone.com</td>
+				<td>www.phaseone.com<br></td>
+			</tr>
+			
+			<tr>
+				<td>whatever.com</td>
+				<td>defaultproxy.whatever.com<br></td>
+			</tr>
+			
+			<tr>
+				<td>rel.ro</td>
+				<td>data.rel.ro<br></td>
+			</tr>
+			
+			<tr>
+				<td>gov.sk</td>
+				<td>vnd.gov.sk<br></td>
+			</tr>
+			
+			<tr>
+				<td>unicode.org</td>
+				<td>www.unicode.org<br></td>
+			</tr>
+			
+			<tr>
+				<td>certificate.fi</td>
+				<td>pki.certificate.fi<br></td>
+			</tr>
+			
+		</table>
+		
+
+		<h4>URLs:</h4>
+		
+		<ul>
+			
+			<li>https://registry.npmjs.org/safe-buffer</li>
+			
+			<li>https://registry.npmjs.org/set-function-length/-/set-function-length-1.2.2.tgz</li>
+			
+			<li>https://registry.npmjs.org/toidentifier/-/toidentifier-1.0.1.tgz</li>
+			
+			<li>http://www.iana.org/assignments/protocol-numbers</li>
+			
+			<li>https://nodejs.org/dist/v$NODE_VERSION/SHASUMS256.txt.asc</li>
+			
+			<li>https://registry.npmjs.org/methods</li>
+			
+			<li>https://registry.npmjs.org/accepts</li>
+			
+			<li>https://registry.npmjs.org/range-parser</li>
+			
+			<li>https://registry.npmjs.org/escape-html/-/escape-html-1.0.3.tgz</li>
+			
+			<li>https://registry.npmjs.org/accepts/-/accepts-1.3.8.tgz</li>
+			
+			<li>https://registry.npmjs.org/methods/-/methods-1.1.2.tgz</li>
+			
+			<li>https://registry.npmjs.org/escape-html</li>
+			
+			<li>https://registry.npmjs.org/cookie</li>
+			
+			<li>https://registry.npmjs.org/es-errors/-/es-errors-1.3.0.tgz</li>
+			
+			<li>https://registry.npmjs.org/ipaddr.js/-/ipaddr.js-1.9.1.tgz</li>
+			
+			<li>https://registry.npmjs.org/serve-static/-/serve-static-1.16.2.tgz</li>
+			
+			<li>https://registry.npmjs.org/content-disposition/-/content-disposition-0.5.4.tgz</li>
+			
+			<li>file:b4987bca8c4c4c640d6b71dcccfd7172b44771e0f851a47d05c00c2bdcd204f6</li>
+			
+			<li>https://www.gnu.org/software/wget/manual/wget.html#Startup-File</li>
+			
+			<li>https://registry.npmjs.org/es-define-property/-/es-define-property-1.0.0.tgz</li>
+			
+			<li>https://registry.npmjs.org/iconv-lite/-/iconv-lite-0.4.24.tgz</li>
+			
+			<li>https://registry.npmjs.org/type-is/-/type-is-1.6.18.tgz</li>
+			
+			<li>file://</li>
+			
+			<li>https://registry.npmjs.org/serve-static</li>
+			
+			<li>https://registry.npmjs.org/gopd/-/gopd-1.0.1.tgz</li>
+			
+			<li>https://registry.npmjs.org/unpipe/-/unpipe-1.0.0.tgz</li>
+			
+			<li>https://registry.npmjs.org/call-bind/-/call-bind-1.0.7.tgz</li>
+			
+			<li>https://registry.npmjs.org/fresh/-/fresh-0.5.2.tgz</li>
+			
+			<li>https://registry.npmjs.org/finalhandler/-/finalhandler-1.3.1.tgz</li>
+			
+			<li>http://192.168.1.1:8080</li>
+			
+			<li>http://localhost:${port}</li>
+			
+			<li>File::Copy</li>
+			
+			<li>http://www.unicode.org/copyright.html</li>
+			
+			<li>https://registry.npmjs.org/define-data-property/-/define-data-property-1.1.4.tgz</li>
+			
+			<li>https://registry.npmjs.org/debug/-/debug-2.6.9.tgz</li>
+			
+			<li>https://registry.npmjs.org/es-errors</li>
+			
+			<li>https://github.com/advisories/GHSA-chqj-j4fh-rw7m</li>
+			
+			<li>https://www.debian.org/</li>
+			
+			<li>file:amd64</li>
+			
+			<li>https://registry.npmjs.org/finalhandler</li>
+			
+			<li>https://registry.npmjs.org/mime-types</li>
+			
+			<li>https://registry.npmjs.org/utils-merge/-/utils-merge-1.0.1.tgz</li>
+			
+			<li>https://aptitude.alioth.debian.org/doc/en/ch02s05s05.html#configApt-AutoRemove-SuggestsImportant</li>
+			
+			<li>https://www.gnu.org/software/coreutils/</li>
+			
+			<li>https://registry.npmjs.org/call-bind</li>
+			
+			<li>https://registry.npmjs.org/bytes/-/bytes-3.1.2.tgz</li>
+			
+			<li>https://registry.npmjs.org/ms/-/ms-2.1.3.tgz</li>
+			
+			<li>https://registry.npmjs.org/mime-types/-/mime-types-2.1.35.tgz</li>
+			
+			<li>https://yarnpkg.com/downloads/$YARN_VERSION/yarn-v$YARN_VERSION.tar.gz</li>
+			
+			<li>https://salsa.debian.org/helmutg/dpkg-root-demo/-/jobs</li>
+			
+			<li>https://gnu.org/licenses/gpl.html</li>
+			
+			<li>https://registry.npmjs.org/cookie-signature</li>
+			
+			<li>https://registry.npmjs.org/ms</li>
+			
+			<li>https://registry.npmjs.org/get-intrinsic</li>
+			
+			<li>https://registry.npmjs.org/array-flatten/-/array-flatten-1.1.1.tgz</li>
+			
+			<li>http://www.efg2.com/Lab/Library/ImageProcessing/DHALF.TXT</li>
+			
+			<li>File::Find::name,$re</li>
+			
+			<li>https://www.gnu.org/gethelp/</li>
+			
+			<li>https://www.gnu.org/software/tar/</li>
+			
+			<li>https://registry.npmjs.org/unpipe</li>
+			
+			<li>https://registry.npmjs.org/etag</li>
+			
+			<li>https://registry.npmjs.org/function-bind</li>
+			
+			<li>https://registry.npmjs.org/safer-buffer/-/safer-buffer-2.1.2.tgz</li>
+			
+			<li>https://registry.npmjs.org/parseurl/-/parseurl-1.3.3.tgz</li>
+			
+			<li>https://github.com/advisories/GHSA-p3vf-v8qc-cwcr</li>
+			
+			<li>https://admmin:APA91b8uVvvpYoSJBCP@my.host.live.something.com:9000/</li>
+			
+			<li>File::Find</li>
+			
+			<li>https://registry.npmjs.org/content-type</li>
+			
+			<li>https://registry.npmjs.org/has-symbols</li>
+			
+			<li>https://registry.npmjs.org/has-property-descriptors</li>
+			
+			<li>http://snapshot.debian.org/archive/debian/20241016T000000Z</li>
+			
+			<li>http://standards-oui.ieee.org/ethertype/eth.txt</li>
+			
+			<li>file:/usr/local/lib/node_modules/npm/npmrc</li>
+			
+			<li>https://registry.npmjs.org/side-channel/-/side-channel-1.0.6.tgz</li>
+			
+			<li>https://registry.npmjs.org/setprototypeof/-/setprototypeof-1.2.0.tgz</li>
+			
+			<li>https://registry.npmjs.org/es-define-property</li>
+			
+			<li>https://registry.npmjs.org/has-symbols/-/has-symbols-1.0.3.tgz</li>
+			
+			<li>https://registry.npmjs.org/ms/-/ms-2.0.0.tgz</li>
+			
+			<li>http://svnbook.red-bean.com/nightly/en/svn.serverconfig.netmodel.html#svn.tour.initial.authn-cache-purge</li>
+			
+			<li>File::Find::prune=1</li>
+			
+			<li>https://registry.npmjs.org/npm</li>
+			
+			<li>https://registry.npmjs.org/express</li>
+			
+			<li>https://registry.npmjs.org/type-is</li>
+			
+			<li>https://registry.npmjs.org/raw-body</li>
+			
+			<li>https://registry.npmjs.org/media-typer/-/media-typer-0.3.0.tgz</li>
+			
+			<li>https://github.com/advisories/GHSA-gx9m-whjm-85jf</li>
+			
+			<li>https://1.1.1.1</li>
+			
+			<li>http://www.fho-emden.de/~hoffmann/hilb010101.pdf</li>
+			
+			<li>https://registry.npmjs.org/depd</li>
+			
+			<li>https://registry.npmjs.org/body-parser</li>
+			
+			<li>https://registry.npmjs.org/side-channel</li>
+			
+			<li>http://lwn.net/Articles/277146/</li>
+			
+			<li>https://registry.npmjs.org/cookie-signature/-/cookie-signature-1.0.6.tgz</li>
+			
+			<li>https://registry.npmjs.org/content-type/-/content-type-1.0.5.tgz</li>
+			
+			<li>https://registry.npmjs.org/qs</li>
+			
+			<li>https://registry.npmjs.org/encodeurl</li>
+			
+			<li>https://registry.npmjs.org/merge-descriptors</li>
+			
+			<li>https://registry.npmjs.org/forwarded/-/forwarded-0.2.0.tgz</li>
+			
+			<li>https://registry.npmjs.org/cookie/-/cookie-0.7.1.tgz</li>
+			
+			<li>https://registry.npmjs.org/negotiator/-/negotiator-0.6.3.tgz</li>
+			
+			<li>https://registry.npmjs.org/merge-descriptors/-/merge-descriptors-1.0.3.tgz</li>
+			
+			<li>https://github.com/advisories/GHSA-63q7-h895-m982</li>
+			
+			<li>https://www.kernel.org/doc/html/latest/admin-guide/sysrq.html</li>
+			
+			<li>https://translationproject.org/team/</li>
+			
+			<li>https://registry.npmjs.org/fresh</li>
+			
+			<li>https://registry.npmjs.org/path-to-regexp</li>
+			
+			<li>https://registry.npmjs.org/forwarded</li>
+			
+			<li>https://registry.npmjs.org/proxy-addr</li>
+			
+			<li>https://registry.npmjs.org/utils-merge</li>
+			
+			<li>https://registry.npmjs.org/http-errors</li>
+			
+			<li>https://registry.npmjs.org/hasown/-/hasown-2.0.2.tgz</li>
+			
+			<li>https://registry.npmjs.org/encodeurl/-/encodeurl-2.0.0.tgz</li>
+			
+			<li>https://github.com/advisories/GHSA-mjjq-c88q-qhr6</li>
+			
+			<li>https://github.com/debuerreotype/debuerreotype/issues</li>
+			
+			<li>https://registry.npmjs.org/vary</li>
+			
+			<li>https://registry.npmjs.org/safer-buffer</li>
+			
+			<li>https://registry.npmjs.org/statuses/-/statuses-2.0.1.tgz</li>
+			
+			<li>https://registry.npmjs.org/on-finished/-/on-finished-2.4.1.tgz</li>
+			
+			<li>File::Find::name</li>
+			
+			<li>https://registry.npmjs.org/dompurify</li>
+			
+			<li>https://registry.npmjs.org/send</li>
+			
+			<li>https://registry.npmjs.org/destroy</li>
+			
+			<li>http://proxy.yoyodyne.com:18023/</li>
+			
+			<li>https://registry.npmjs.org/inherits</li>
+			
+			<li>https://registry.npmjs.org/mime-db</li>
+			
+			<li>https://registry.npmjs.org/ee-first/-/ee-first-1.1.1.tgz</li>
+			
+			<li>https://registry.npmjs.org/ee-first</li>
+			
+			<li>https://registry.npmjs.org/toidentifier</li>
+			
+			<li>https://registry.npmjs.org/ipaddr.js</li>
+			
+			<li>https://imagemagick.org/</li>
+			
+			<li>https://mariadb.com/kb/en/basic-mariadb-articles/</li>
+			
+			<li>File::Find::find</li>
+			
+			<li>https://registry.npmjs.org/parseurl</li>
+			
+			<li>https://registry.npmjs.org/content-disposition</li>
+			
+			<li>https://registry.npmjs.org/set-function-length</li>
+			
+			<li>https://registry.npmjs.org/define-data-property</li>
+			
+			<li>https://registry.npmjs.org/vary/-/vary-1.1.2.tgz</li>
+			
+			<li>https://registry.npmjs.org/body-parser/-/body-parser-1.20.3.tgz</li>
+			
+			<li>https://registry.npmjs.org/get-intrinsic/-/get-intrinsic-1.2.4.tgz</li>
+			
+			<li>https://registry.npmjs.org/etag/-/etag-1.8.1.tgz</li>
+			
+			<li>https://registry.npmjs.org/-/npm/v1/security/advisories/bulk</li>
+			
+			<li>http://dev.mysql.com/doc/mysql/en/server-system-variables.html</li>
+			
+			<li>http://www.gnu.org/licenses/</li>
+			
+			<li>https://registry.npmjs.org/statuses</li>
+			
+			<li>https://registry.npmjs.org/setprototypeof</li>
+			
+			<li>https://registry.npmjs.org/object-inspect/-/object-inspect-1.13.2.tgz</li>
+			
+			<li>https://registry.npmjs.org/express/-/express-4.21.1.tgz</li>
+			
+			<li>https://registry.npmjs.org/dompurify/-/dompurify-1.0.11.tgz</li>
+			
+			<li>https://github.com/advisories/GHSA-mmhx-hmjr-r674</li>
+			
+			<li>https://www.gnu.org/licenses/</li>
+			
+			<li>https://registry.npmjs.org/mime</li>
+			
+			<li>https://registry.npmjs.org/gopd</li>
+			
+			<li>https://registry.npmjs.org/has-proto/-/has-proto-1.0.3.tgz</li>
+			
+			<li>https://registry.npmjs.org/path-to-regexp/-/path-to-regexp-0.1.10.tgz</li>
+			
+			<li>http://www.debian.org/Bugs/</li>
+			
+			<li>https://registry.npmjs.org/iconv-lite</li>
+			
+			<li>https://registry.npmjs.org/depd/-/depd-2.0.0.tgz</li>
+			
+			<li>https://github.com/npm/cli/releases/tag/v10.9.0</li>
+			
+			<li>file:/usr/local/etc/npmrc</li>
+			
+			<li>https://registry.npmjs.org/media-typer</li>
+			
+			<li>https://registry.npmjs.org/has-property-descriptors/-/has-property-descriptors-1.0.2.tgz</li>
+			
+			<li>https://registry.npmjs.org/on-finished</li>
+			
+			<li>https://registry.npmjs.org/debug</li>
+			
+			<li>https://registry.npmjs.org/bytes</li>
+			
+			<li>http://snapshot.debian.org/archive/debian-security/20241016T000000Z</li>
+			
+			<li>https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-linux-$ARCH.tar.xz</li>
+			
+			<li>https://yarnpkg.com/downloads/$YARN_VERSION/yarn-v$YARN_VERSION.tar.gz.asc</li>
+			
+			<li>File::Temp</li>
+			
+			<li>https://unicode-org.github.io/icu/userguide/transforms/normalization#data-file-syntax</li>
+			
+			<li>https://registry.npmjs.org/negotiator</li>
+			
+			<li>File::Path</li>
+			
+			<li>https://registry.npmjs.org/hasown</li>
+			
+			<li>https://registry.npmjs.org/function-bind/-/function-bind-1.1.2.tgz</li>
+			
+			<li>https://registry.npmjs.org/send/-/send-0.19.0.tgz</li>
+			
+			<li>https://registry.npmjs.org/proxy-addr/-/proxy-addr-2.0.7.tgz</li>
+			
+			<li>https://registry.npmjs.org/mime/-/mime-1.6.0.tgz</li>
+			
+			<li>https://registry.npmjs.org/mime-db/-/mime-db-1.52.0.tgz</li>
+			
+			<li>https://registry.npmjs.org/raw-body/-/raw-body-2.5.2.tgz</li>
+			
+			<li>http://deb.debian.org/debian</li>
+			
+			<li>https://www.iana.org/assignments/ieee-802-numbers/</li>
+			
+			<li>File::FcntlLock</li>
+			
+			<li>file:/root/.npmrc</li>
+			
+			<li>https://registry.npmjs.org/has-proto</li>
+			
+			<li>https://registry.npmjs.org/destroy/-/destroy-1.2.0.tgz</li>
+			
+			<li>https://registry.npmjs.org/safe-buffer/-/safe-buffer-5.2.1.tgz</li>
+			
+			<li>https://registry.npmjs.org/http-errors/-/http-errors-2.0.0.tgz</li>
+			
+			<li>https://registry.npmjs.org/array-flatten</li>
+			
+			<li>https://registry.npmjs.org/object-inspect</li>
+			
+			<li>https://registry.npmjs.org/inherits/-/inherits-2.0.4.tgz</li>
+			
+			<li>https://registry.npmjs.org/qs/-/qs-6.13.0.tgz</li>
+			
+			<li>https://registry.npmjs.org/encodeurl/-/encodeurl-1.0.2.tgz</li>
+			
+			<li>https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xhtml</li>
+			
+			<li>http://deb.debian.org/debian-security</li>
+			
+			<li>File::FcntlLock-</li>
+			
+			<li>file:/app/.npmrc</li>
+			
+			<li>https://registry.npmjs.org/range-parser/-/range-parser-1.2.1.tgz</li>
+			
+		</ul>
+		
+	</div>
+	
+</body>
+</html>

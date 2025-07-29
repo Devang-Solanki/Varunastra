@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"regexp"
 	"strings"
+
+	regexp "github.com/wasilibs/go-re2"
 
 	"github.com/Devang-Solanki/go-ruby-bundler-audit/rubyaudit"
 )

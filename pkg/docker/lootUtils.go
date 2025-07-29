@@ -21,7 +21,7 @@ var (
 )
 
 // ProcessImage scans a Docker image for vulnerabilities.
-func ProcessImage(imageName string, scanMap map[string]bool, regexDB []config.RegexDB, excludedPatterns config.ExcludedPatterns, allTagsScan bool) ([]FinalOutput, error) {
+func ProcessImage(imageName string, scanMap map[string]bool, regexDB []config.RegexDB, excludedPatterns config.ExcludedPatterns, whitelistedPatterns config.WhitelistedPatterns, allTagsScan bool) ([]FinalOutput, error) {
 	scans = scanMap
 	var combinedOutput []FinalOutput
 	isLocalFile := strings.HasSuffix(imageName, ".tar")
@@ -35,7 +35,7 @@ func ProcessImage(imageName string, scanMap map[string]bool, regexDB []config.Re
 			return nil, fmt.Errorf("failed to load local image %s: %v", imageName, err)
 		}
 	} else {
-		combinedOutput, err = processImage(imageName, scanMap, regexDB, excludedPatterns, allTagsScan)
+		combinedOutput, err = processImage(imageName, scanMap, regexDB, excludedPatterns, whitelistedPatterns, allTagsScan)
 		if err != nil {
 			return nil, err
 		}
@@ -45,7 +45,7 @@ func ProcessImage(imageName string, scanMap map[string]bool, regexDB []config.Re
 }
 
 // processRemoteImage scans all tags of a remote Docker image.
-func processImage(imageName string, scanMap map[string]bool, regexDB []config.RegexDB, excludedPatterns config.ExcludedPatterns, allTagsScan bool) ([]FinalOutput, error) {
+func processImage(imageName string, scanMap map[string]bool, regexDB []config.RegexDB, excludedPatterns config.ExcludedPatterns, whitelistedPatterns config.WhitelistedPatterns, allTagsScan bool) ([]FinalOutput, error) {
 	imageSeen := make(map[string]bool)
 	var combinedOutput []FinalOutput
 
@@ -86,7 +86,7 @@ func processImage(imageName string, scanMap map[string]bool, regexDB []config.Re
 			continue
 		}
 		imageSeen[hash.String()] = true
-		output, err := scanImageTag(taggedImage, img, scanMap, regexDB, excludedPatterns)
+		output, err := scanImageTag(taggedImage, img, scanMap, regexDB, excludedPatterns, whitelistedPatterns)
 		if err != nil {
 			return nil, err
 		}
@@ -101,10 +101,10 @@ func processImage(imageName string, scanMap map[string]bool, regexDB []config.Re
 }
 
 // scanImageTag scans a specific image tag for vulnerabilities.
-func scanImageTag(taggedImage string, img v1.Image, scanMap map[string]bool, regexDB []config.RegexDB, excludedPatterns config.ExcludedPatterns) (FinalOutput, error) {
+func scanImageTag(taggedImage string, img v1.Image, scanMap map[string]bool, regexDB []config.RegexDB, excludedPatterns config.ExcludedPatterns, whitelistedPatterns config.WhitelistedPatterns) (FinalOutput, error) {
 	log.Println("Starting Scan for Tag:", taggedImage)
 	output := FinalOutput{Target: taggedImage}
-	errs := launchWorkerPool(img, taggedImage, excludedPatterns, scanMap, regexDB, &output)
+	errs := launchWorkerPool(img, taggedImage, excludedPatterns, whitelistedPatterns, scanMap, regexDB, &output)
 	if len(errs) > 0 {
 		return output, fmt.Errorf("error(s) during scan: %v", errs)
 	}
@@ -113,11 +113,11 @@ func scanImageTag(taggedImage string, img v1.Image, scanMap map[string]bool, reg
 }
 
 // launchWorkerPool starts a pool of workers to scan layers and environment history concurrently.
-func launchWorkerPool(img v1.Image, name string, excludedPatterns config.ExcludedPatterns, scanMap map[string]bool, regexDB []config.RegexDB, output *FinalOutput) []error {
+func launchWorkerPool(img v1.Image, name string, excludedPatterns config.ExcludedPatterns, whitelistedPatterns config.WhitelistedPatterns, scanMap map[string]bool, regexDB []config.RegexDB, output *FinalOutput) []error {
 	var wg sync.WaitGroup
 	var assets = &Assets{}
 	errorCh := make(chan error, 2)
-	taskChannel := make(chan SecretScanTask, 1000)
+	taskChannel := make(chan SecretScanTask, 10000)
 
 	var workerwg sync.WaitGroup
 	for i := 0; i < workerCount; i++ {
@@ -128,7 +128,7 @@ func launchWorkerPool(img v1.Image, name string, excludedPatterns config.Exclude
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		if err := processLayers(img, excludedPatterns, output, name, taskChannel); err != nil {
+		if err := processLayers(img, excludedPatterns, whitelistedPatterns, output, name, taskChannel); err != nil {
 			errorCh <- fmt.Errorf("error processing layers: %w", err)
 		}
 	}()
@@ -160,7 +160,7 @@ func launchWorkerPool(img v1.Image, name string, excludedPatterns config.Exclude
 }
 
 // processLayers scans each layer of an image.
-func processLayers(img v1.Image, excludedPatterns config.ExcludedPatterns, output *FinalOutput, imagName string, taskChannel chan<- SecretScanTask) error {
+func processLayers(img v1.Image, excludedPatterns config.ExcludedPatterns, whitelistedPatterns config.WhitelistedPatterns, output *FinalOutput, imagName string, taskChannel chan<- SecretScanTask) error {
 	layers, err := img.Layers()
 	if err != nil {
 		return fmt.Errorf("failed to get image layers: %w", err)
@@ -180,7 +180,7 @@ func processLayers(img v1.Image, excludedPatterns config.ExcludedPatterns, outpu
 		go func(layer v1.Layer, key v1.Hash) {
 			defer wg.Done()
 			defer func() { <-sem }()
-			if err := processLayer(layer, key, excludedPatterns, imagName, output, taskChannel); err != nil {
+			if err := processLayer(layer, key, excludedPatterns, whitelistedPatterns, imagName, output, taskChannel); err != nil {
 				log.Printf("error processing layer: %s", err)
 			}
 		}(layer, key)
@@ -191,7 +191,7 @@ func processLayers(img v1.Image, excludedPatterns config.ExcludedPatterns, outpu
 }
 
 // processLayer scans an individual layer of an image.
-func processLayer(layer v1.Layer, digest v1.Hash, excludedPatterns config.ExcludedPatterns, imageName string, output *FinalOutput, taskChannel chan<- SecretScanTask) error {
+func processLayer(layer v1.Layer, digest v1.Hash, excludedPatterns config.ExcludedPatterns, whitelistedPatterns config.WhitelistedPatterns, imageName string, output *FinalOutput, taskChannel chan<- SecretScanTask) error {
 	log.Println("Scanning Layer:", digest.String())
 	r, err := layer.Uncompressed()
 	if err != nil {
@@ -205,11 +205,23 @@ func processLayer(layer v1.Layer, digest v1.Hash, excludedPatterns config.Exclud
 		if err == io.EOF {
 			break
 		}
+
 		if err != nil {
 			return fmt.Errorf("error reading tar archive: %w", err)
 		}
-		if header.Typeflag != tar.TypeReg || isExcluded(header.Name, excludedPatterns) {
+
+		if header.Typeflag != tar.TypeReg {
 			continue
+		}
+
+		if len(whitelistedPatterns) > 0 {
+			if !isWhitelisted(header.Name, whitelistedPatterns) {
+				continue
+			}
+		} else {
+			if isExcluded(header.Name, excludedPatterns) {
+				continue
+			}
 		}
 
 		// Handle specific file names directly

@@ -9,9 +9,11 @@ import (
 	"net"
 	"net/http"
 	"reflect"
-	"regexp"
 	"strings"
+	"sync"
 	"time"
+
+	regexp "github.com/wasilibs/go-re2"
 
 	"github.com/Devang-Solanki/Varunastra/pkg/config"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -128,11 +130,7 @@ func resolveDomain(domain string) bool {
 
 	// Perform the DNS lookup
 	_, err := dnsResolver.LookupHost(context.Background(), domain)
-	if err == nil {
-		return true
-	}
-
-	return false
+	return err == nil // Return true if the domain resolves successfully, false otherwise
 }
 
 // fetchTagsFromRegistry fetches available tags for an image from the specified Docker registry
@@ -406,6 +404,7 @@ func RemoveDuplicates(issues *[]SecretIssue) {
 // secretScanner scans the content for secrets and returns any issues found
 func secretScanner(path string, content *[]byte, id interface{}, regexDB []config.RegexDB) ([]SecretIssue, error) {
 	var finalResult []SecretIssue
+	var wg sync.WaitGroup
 	var place string
 
 	switch v := id.(type) {
@@ -419,28 +418,40 @@ func secretScanner(path string, content *[]byte, id interface{}, regexDB []confi
 		return nil, fmt.Errorf("unsupported type: %T", id)
 	}
 
+	var mu sync.Mutex // mutex to protect finalResult
+
 	for _, regex := range regexDB {
-		x := regex.Pattern.FindAllSubmatch(*content, -1)
-		if len(x) > 0 {
-			for _, y := range x {
-				if len(y) > 1 && regex.ID != "" {
-					if checkDupEntry(string(y[1]), regex.ID, path, finalResult) {
-						continue
+		wg.Add(1)
+		go func(r config.RegexDB) {
+			defer wg.Done()
+
+			x := r.Pattern.FindAllSubmatch(*content, -1)
+			if len(x) > 0 {
+				for _, y := range x {
+					if len(y) > 1 && r.ID != "" {
+						if checkDupEntry(string(y[1]), r.ID, path, finalResult) {
+							continue
+						}
 					}
+
+					var kissue SecretIssue
+					kissue.Issue = fmt.Sprintf("Secret Leaked in Docker %s %s", place, id)
+					kissue.Path = path
+					kissue.Type = r.ID
+					kissue.Secret = string(y[0])
+
+					mu.Lock()
+					finalResult = append(finalResult, kissue)
+					mu.Unlock()
+
+					log.Print("\n")
+					log.Printf("Secrets found -> Type: %s | Secret: %s | On Path: %s", r.ID, string(y[0]), path)
 				}
-				var kissue SecretIssue
-				kissue.Issue = fmt.Sprintf("Secret Leaked in Docker %s %s", place, id)
-				kissue.Path = path
-				kissue.Type = regex.ID
-				kissue.Secret = string(y[0])
-
-				finalResult = append(finalResult, kissue)
-
-				log.Print("\n")
-				log.Printf("Secrets found -> Type: %s | Secret: %s | On Path: %s", regex.ID, string(y[0]), path)
 			}
-		}
+		}(regex)
 	}
+
+	wg.Wait()
 
 	if len(finalResult) != 0 {
 		return finalResult, nil

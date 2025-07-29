@@ -48,6 +48,20 @@ func isExcluded(filePath string, excludedPatterns config.ExcludedPatterns) bool 
 	return false
 }
 
+// isWhitelisted checks if a file path matches any of the whitelisted patterns
+func isWhitelisted(filePath string, whitelistedPatterns config.WhitelistedPatterns) bool {
+	// Normalize file path separators for cross-platform compatibility
+	normalizedPath := strings.ReplaceAll(filePath, "\\", "/")
+
+	// Check if the normalized file path matches any exclusion pattern
+	for _, pattern := range whitelistedPatterns {
+		if pattern.MatchString(normalizedPath) {
+			return true
+		}
+	}
+	return false
+}
+
 func processLargeFile(tr *tar.Reader, fileName string, digest v1.Hash, imageName string, taskChannel chan<- SecretScanTask) error {
 	tempFile, err := os.CreateTemp("", "large-file-*.tmp")
 	if err != nil {

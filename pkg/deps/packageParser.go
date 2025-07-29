@@ -4,8 +4,9 @@ import (
 	"bufio"
 	"bytes"
 	"log"
-	"regexp"
 	"strings"
+
+	regexp "github.com/wasilibs/go-re2"
 )
 
 // extractPackageLockDependencies extracts top-level dependencies from package-lock.json structure

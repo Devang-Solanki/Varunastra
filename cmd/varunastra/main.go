@@ -14,7 +14,7 @@ import (
 )
 
 // handleScan processes the scan command.
-func handleScan(cli config.CLI, regexDB []config.RegexDB, excludedPatterns config.ExcludedPatterns) {
+func handleScan(cli config.CLI, regexDB []config.RegexDB, excludedPatterns config.ExcludedPatterns, whitelistedPatterns config.WhitelistedPatterns) {
 	if len(os.Args) < 2 {
 		log.Fatalf("Usage: %s <docker-image>", os.Args[0])
 	}
@@ -24,7 +24,7 @@ func handleScan(cli config.CLI, regexDB []config.RegexDB, excludedPatterns confi
 	imageName := cli.Target
 
 	// Process each image
-	output, err := docker.ProcessImage(imageName, scanMap, regexDB, excludedPatterns, cli.All)
+	output, err := docker.ProcessImage(imageName, scanMap, regexDB, excludedPatterns, whitelistedPatterns, cli.All)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -85,12 +85,12 @@ func main() {
 		}
 	}
 
-	regexDB, excludedPatterns, err := config.LoadConfig()
+	regexDB, excludedPatterns, whitelistedPatterns, err := config.LoadConfig()
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Process the command based on the context
-	handleScan(cli, regexDB, excludedPatterns)
+	handleScan(cli, regexDB, excludedPatterns, whitelistedPatterns)
 	ctx.Exit(0)
 }
