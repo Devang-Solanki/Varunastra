@@ -14,7 +14,7 @@ const (
 	// Configuration directory and file details
 	configDir  = ".config/varunastra"
 	configFile = "config.yaml"
-	configURL  = "https://devanghacks.in/varunastra/config.yaml"
+	configURL  = "https://raw.githubusercontent.com/redhuntlabs/Varunastra/refs/heads/main/data/config.yaml"
 )
 
 // Global variables

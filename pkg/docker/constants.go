@@ -4,7 +4,7 @@ import "github.com/Devang-Solanki/Varunastra/pkg/deps"
 
 // Constants for configuration and limits
 const (
-	maxFileSize   = 100 * 1024 * 1024 // 100MB in bytes
+	maxFileSize   = 200 * 1024 * 1024 // 100MB in bytes
 	workerCount   = 1000
 	maxGoroutines = 10
 

@@ -21,8 +21,8 @@ func initRegex(configFilePath string) ([]RegexDB, error) {
 	if err != nil {
 		if strings.Contains(err.Error(), "no such file or directory") {
 			// File doesn't exist, attempt to download it
-			log.Println("Regex file does not exist, attempt to download it from: devanghacks.in/varunastra/regexes.json")
-			url := "https://devanghacks.in/varunastra/regexes.json"
+			log.Println("Regex file does not exist, attempt to download it from github: /redhuntlabs/Varunastra/data/regexes.json")
+			url := "https://raw.githubusercontent.com/redhuntlabs/Varunastra/refs/heads/main/data/regexes.json"
 			resp, err := http.Get(url)
 			if err != nil {
 				return nil, fmt.Errorf("failed to download file: %w", err)
@@ -169,7 +169,7 @@ func LoadConfig() ([]RegexDB, ExcludedPatterns, WhitelistedPatterns, error) {
 }
 
 func downloadFile(url, filepath string) error {
-	log.Println("Downloading default config from: devanghacks.in/varunastra/config.yaml")
+	log.Println("Downloading default config from github: redhuntlabs/Varunastra/data/config.yaml")
 	// Send HTTP GET request
 	resp, err := http.Get(url)
 	if err != nil {
