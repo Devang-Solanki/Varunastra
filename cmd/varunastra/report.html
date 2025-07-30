@@ -1,0 +1,157 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Varunastra Scan Report</title>
+	<style>
+		:root {
+			--bg-color: #f0f4f8;
+			--card-bg: #ffffff;
+			--text-color: #2e3a59;
+			--muted-text: #6b7280;
+			--table-header: #e5eaf1;
+			--border-color: #d1d5db;
+			--accent-color: #3b82f6;
+		}
+
+		body {
+			font-family: 'Helvetica Neue', sans-serif;
+			background-color: var(--bg-color);
+			color: var(--text-color);
+			margin: 0;
+			padding: 40px 20px;
+			line-height: 1.6;
+		}
+
+		h1, h2, h3, h4 {
+			margin-top: 0;
+		}
+
+		h1 {
+			font-size: 2rem;
+			margin-bottom: 30px;
+			border-bottom: 2px solid var(--border-color);
+			padding-bottom: 10px;
+		}
+
+		.section {
+			background-color: var(--card-bg);
+			border-radius: 10px;
+			box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+			padding: 25px 30px;
+			margin-bottom: 30px;
+			transition: background-color 0.3s;
+		}
+
+		.section:hover {
+			background-color: #fdfefe;
+		}
+
+		.table {
+			width: 100%;
+			border-collapse: collapse;
+			margin-top: 10px;
+			border-radius: 6px;
+			overflow: hidden;
+		}
+
+		.table th, .table td {
+			border: 1px solid var(--border-color);
+			padding: 12px 14px;
+			text-align: left;
+		}
+
+		.table th {
+			background-color: var(--table-header);
+			color: var(--text-color);
+			font-weight: 600;
+		}
+
+		ul {
+			padding-left: 20px;
+			margin-top: 10px;
+		}
+
+		li {
+			margin-bottom: 6px;
+		}
+
+		p.empty-message {
+			color: var(--muted-text);
+			font-style: italic;
+			margin-top: 5px;
+		}
+
+		h2 {
+			color: var(--accent-color);
+			margin-bottom: 15px;
+		}
+
+		h3, h4 {
+			margin-top: 20px;
+			color: #374151;
+		}
+	</style>
+</head>
+<body>
+	<h1>Scan Results</h1>
+	
+	<div class="section">
+		<h2>Target: trufflesecurity/secrets:latest</h2>
+
+		<h3>Secrets Found:</h3>
+		
+		<table class="table">
+			<tr>
+				<th>Issue</th>
+				<th>Path</th>
+				<th>Type</th>
+				<th>Secret</th>
+			</tr>
+			
+			<tr>
+				<td>Secret Leaked in Docker Layer sha256:a794864de8c4ff087813fd66cff74601b84cbef8fe1a1f17f9923b40cf051b59</td>
+				<td>aws</td>
+				<td>Amazon Access Key</td>
+				<td>AKIAXYZDQCEN4B6JSJQI</td>
+			</tr>
+			
+			<tr>
+				<td>Secret Leaked in Docker Layer sha256:a794864de8c4ff087813fd66cff74601b84cbef8fe1a1f17f9923b40cf051b59</td>
+				<td>aws</td>
+				<td>Amazon Secret Access Key Variable</td>
+				<td>aws_secret_access_key</td>
+			</tr>
+			
+			<tr>
+				<td>Secret Leaked in Docker Layer sha256:a794864de8c4ff087813fd66cff74601b84cbef8fe1a1f17f9923b40cf051b59</td>
+				<td>aws</td>
+				<td>AWS Secret Access Key</td>
+				<td>aws_secret_access_key = Tg0pz8Jii8hkLx4&#43;PnUisM8GmKs3a2DK&#43;9qz/lie</td>
+			</tr>
+			
+		</table>
+		
+
+		<h3>Vulnerabilities Found:</h3>
+		
+		<p class="empty-message">No vulnerabilities found.</p>
+		
+
+		<h3>Assets:</h3>
+
+		<h4>Domains:</h4>
+		
+		<p class="empty-message">No domains found.</p>
+		
+
+		<h4>URLs:</h4>
+		
+		<p class="empty-message">No URLs found.</p>
+		
+	</div>
+	
+</body>
+</html>
