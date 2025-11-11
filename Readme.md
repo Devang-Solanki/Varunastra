@@ -139,16 +139,16 @@ varunastra --target devangsolankii/secrets --scans "secrets,vuln,assets"
         "issue": "Secret Leaked in Docker History history:13",
         "asset": "history:13",
         "type": "Google API Key",
-        "secret": "AIzaSy0c3965368a6b10f7640dbda46abfdca98"
+        "secret": "AIzaSy0c3965368a6b10f7640dada46abfdca98"
       },
       {
         "issue": "Secret Leaked in Docker History history:18",
         "asset": "history:18",
         "type": "Google API Key",
-        "secret": "AIzaSy0c3965368a6b10f7640dbda46abfdca98"
+        "secret": "AIzaSy0c3965a68a6b10f7640dbda46abfdca98"
       },
       {
-        "issue": "Secret Leaked in Docker Layer sha256:ad1c7cfc347f5c86fc2678b58f6a8fb6c6003471405760532fc3240b9eb1b343",
+        "issue": "Secret Leaked in Docker Layer sha256:ad1c7cfc347f5c86fb2678b58f6a8fb6c6003471405760532fc3240b9eb1b343",
         "asset": "etc/ImageMagick-6/mime.xml",
         "type": "PGP private key block",
         "secret": "-----BEGIN PGP PRIVATE KEY BLOCK-----"
