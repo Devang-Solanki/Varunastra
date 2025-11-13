@@ -157,7 +157,7 @@ varunastra --target devangsolankii/secrets --scans "secrets,vuln,assets"
         "issue": "Secret Leaked in Docker Layer sha256:225e4516f59838f6d9e50e417461a30cce68d46786ee91df26e3c11e1eeb4948",
         "asset": "app/app.js",
         "type": "Password in URL",
-        "secret": "https://admmin:APA91b8uVvvpYoSJBCP@my.host.live.something.com:9000/\"\n"
+        "secret": "https://admin:APA91b8uVvvpYoSJBCP@my.host.live.something.com:9000/\"\n"
       }
     ],
     "vulnerabilities": null,
