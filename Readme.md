@@ -139,7 +139,7 @@ varunastra --target devangsolankii/secrets --scans "secrets,vuln,assets"
         "issue": "Secret Leaked in Docker History history:13",
         "asset": "history:13",
         "type": "Google API Key",
-        "secret": "AIzaSy0c3965368a6b10f7640dada46abfdca98"
+        "secret": "AIzaSy0c3965368a6ab10f7640dada46abfdca98"
       },
       {
         "issue": "Secret Leaked in Docker History history:18",
